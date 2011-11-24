@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hello">Hello World, OWActivity!</string>
+    <string name="app_name">overlayweaver_for_android</string>
+<string name="KVMessage">KeyとValue(値) を、入れて、\n[put]ボタンを\押してください。\nP2Pネットワーク上に、\nこのKey/Valueのペアで配置されます。\n</string>
+<string name="KeyText">Key</string>
+<string name="ValueText">Value</string>
+<string name="PutButton">put</string>
+<string name="GetButton">get</string>
+<string name="GetMessage">Keyを入れて、\n[get]ボタンを押してください。\nputしたKey/Valueの Key を\n入れると、P2P上に配置された\nValueを取得することが出来ます。</string>
+<string name="LOGMessage">ここに、操作ログが表示されます。\n</string>
+</resources>

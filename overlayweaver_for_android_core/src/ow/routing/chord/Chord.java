@@ -1,0 +1,255 @@
+/*
+ * Copyright 2006-2009 National Institute of Advanced Industrial Science
+ * and Technology (AIST), and contributors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package ow.routing.chord;
+
+import java.math.BigInteger;
+import java.security.InvalidAlgorithmParameterException;
+import java.util.logging.Level;
+
+import ow.id.ID;
+import ow.id.IDAddressPair;
+import ow.messaging.MessageHandler;
+import ow.messaging.Tag;
+import ow.routing.RoutingAlgorithmConfiguration;
+import ow.routing.RoutingException;
+import ow.routing.RoutingHop;
+import ow.routing.RoutingResult;
+import ow.routing.RoutingService;
+import ow.util.ClockJumpAwareSystem;
+import ow.util.Timer;
+
+/**
+ * A Chord implementation which updates routing table gradually by stabilization.
+ * This algorithm is described in Figure 7 in the Chord paper
+ * "Chord: A Scalable Peer-to-peer Lookup Service for Internet Applications".
+ */
+public final class Chord extends AbstractChord {
+	private ChordConfiguration config;
+
+	// daemons
+	private FingerTableFixer fingerTableFixer;
+	private Thread fingerTableFixerThread = null;
+
+	protected Chord(RoutingAlgorithmConfiguration config, RoutingService routingSvc)
+			throws InvalidAlgorithmParameterException {
+		super(config, routingSvc);
+
+		try {
+			this.config = (ChordConfiguration)config;
+		}
+		catch (ClassCastException e) {
+			throw new InvalidAlgorithmParameterException("The given config is not ChordConfiguration.");
+		}
+
+		// does not invoke a finger table fixer
+		//startFingerTableFixer();
+	}
+
+	private synchronized void startFingerTableFixer() {
+		if (!this.config.getDoFixFingers()) return;
+
+		if (this.fingerTableFixer != null) return;	// to avoid multiple invocations
+
+		this.fingerTableFixer = new FingerTableFixer();
+
+		if (config.getUseTimerInsteadOfThread()) {
+			Timer.getSingletonTimer().schedule(this.fingerTableFixer,
+					System.currentTimeMillis(), true /*isDaemon*/);
+		}
+		else if (this.fingerTableFixerThread == null){
+			this.fingerTableFixerThread = new Thread(this.fingerTableFixer);
+			this.fingerTableFixerThread.setName("FingerTableFixer on " + selfIDAddress.getAddress());
+			this.fingerTableFixerThread.setDaemon(true);
+			this.fingerTableFixerThread.start();
+		}
+	}
+
+	private synchronized void stopFingerTableFixer() {
+		if (this.fingerTableFixerThread != null) {
+			this.fingerTableFixerThread.interrupt();
+			this.fingerTableFixerThread = null;
+		}
+	}
+
+	public synchronized void stop() {
+		logger.log(Level.INFO, "Chord#stop() called.");
+
+		super.stop();
+		this.stopFingerTableFixer();
+	}
+
+	public synchronized void suspend() {
+		super.suspend();
+		this.stopFingerTableFixer();
+	}
+
+	public synchronized void resume() {
+		super.resume();
+		this.startFingerTableFixer();
+	}
+
+	public void prepareHandlers() {
+		super.prepareHandlers(true);
+
+		// REQ_CONNECT
+		// first half of init_finger_table(n')
+		MessageHandler handler = new ReqConnectMessageHandler();
+		runtime.addMessageHandler(Tag.REQ_CONNECT.getNumber(), handler);
+	}
+
+	class ReqConnectMessageHandler extends AbstractChord.ReqConnectMessageHandler {}
+
+	private final class FingerTableFixer implements Runnable {
+		public static final boolean OPTIMIZE = false;
+
+		public void run() {
+			boolean updated = true;
+
+			try {
+				// initial sleep
+				if (!config.getUseTimerInsteadOfThread()) {
+					ClockJumpAwareSystem.sleep((long)(config.getFixFingersMinInterval() * 0.5));
+				}
+
+				while (true) {
+					synchronized (Chord.this) {
+						if (stopped || suspended) {
+							Chord.this.fingerTableFixer = null;
+							Chord.this.fingerTableFixerThread = null;
+							break;
+						}
+					}
+
+					// update a finger
+					BigInteger fingerEdgeDistance;		// ?
+					BigInteger fingerStartBigInteger;	// ?
+
+					if (random.nextDouble() < config.getProbProportionalToIDSpace()) {
+						fingerEdgeDistance = new BigInteger(Chord.this.idSizeInBit, random);
+					}
+					else {
+						int i = random.nextInt(idSizeInBit - 1) + 2;
+							// from 2 to idSizeInBit (both inclusive)
+
+						if (OPTIMIZE) {
+							fingerEdgeDistance = BigInteger.ONE.shiftLeft(i);	// 2 ^ i
+						}
+						else {
+							fingerEdgeDistance = BigInteger.ONE.shiftLeft(i - 1);	// 2 ^ (i-1)
+						}
+					}
+					fingerStartBigInteger =
+						selfIDAddress.getID().toBigInteger().add(fingerEdgeDistance);
+
+					ID fingerEdge = ID.getID(fingerStartBigInteger, config.getIDSizeInByte());
+						// fingerEdge is finger[k].start,
+						// or finger[k+1].start in case that optimize is true.
+
+					RoutingResult res;
+					try {
+						if (OPTIMIZE) {
+							res = runtime.routeToClosestNode(fingerEdge, 1);	// closest to self + 2^i
+						}
+						else {
+							res = runtime.routeToRootNode(fingerEdge, 1);		// root node for self + 2^(i-1)
+						}
+						RoutingHop[] route = res.getRoute();
+						IDAddressPair rootNode = route[route.length - 1].getIDAddressPair();
+
+						for (int i = route.length - 1; i > 0; i--) {
+							IDAddressPair node = route[i].getIDAddressPair();
+
+							if (selfIDAddress.getID().equals(node.getID()))	// node is self
+								continue;
+
+							updated |= fingerTable.put(node);
+							successorList.add(node);
+							
+							/////////////////////////////// 追加部分 2011.09.11 //////////////////////////////
+							int idLevel = node.getID().getIDLevel();
+							//latestIDLevel = Math.max(latestIDLevel, idLevel);
+							if(idLevel > latestIDLevel){
+								latestIDLevel = idLevel;
+								//System.out.println("latest ID level is changed ; " + latestIDLevel);
+								//System.out.println("obtained ID : " + node.getID().toHexString());
+							}
+							/////////////////////////////////////////////////////////////////////////////////
+							
+						}
+
+						if (updated) {
+							logger.log(Level.INFO, "An entry incorporated to finger table: " + rootNode);
+						}
+					}
+					catch (RoutingException e) {
+						logger.log(Level.WARNING, "Routing failed.", e);
+					}
+
+					// sleep
+					this.sleep();
+
+					if (config.getUseTimerInsteadOfThread()) return;
+				}	// while (true)
+			}
+			catch (InterruptedException e) {
+				logger.log(Level.WARNING, "FingerTableFixer interrupted and die.", e);
+			}
+		}
+
+		private void sleep() throws InterruptedException {
+			long interval = config.getFixFingersMinInterval();
+
+			// determine the next interval
+
+			// according to the number of different entries in the finger table
+			// parameters examples: min interval: 10, max interval: 120
+			long minInterval = config.getFixFingersMinInterval();
+			long maxInterval = config.getFixFingersMaxInterval();
+
+			int numFingers = fingerTable.numOfDifferentEntries();   // 0 - 160
+			double ratio = Math.log(numFingers + 1) / Math.log(idSizeInBit + 1);
+
+			interval = minInterval + (long)((maxInterval - minInterval) * ratio);
+
+			// extends interval in case that no new entry found.
+			// parameters examples: min interval: 2, max interval: 128
+//			if (updated) {
+//				this.interval = config.getStabilizeMinInterval();
+//			}
+//			else {
+//				this.interval <<= 1;
+//				if (this.interval > config.getFixFingersMaxInterval()) {
+//					this.interval = config.getFixFingersMaxInterval();
+//				}
+//			}
+
+			double playRatio = config.getFixFingersIntervalPlayRatio();
+			double intervalRatio = 1.0 - playRatio + (playRatio * 2.0 * random.nextDouble());
+
+			// sleep
+			long sleepPeriod = (long)(interval * intervalRatio);
+
+			if (config.getUseTimerInsteadOfThread()) {
+				Timer.getSingletonTimer().schedule(this, System.currentTimeMillis() + sleepPeriod, true /*isDaemon*/);
+			}
+			else {
+				ClockJumpAwareSystem.sleep(sleepPeriod);
+			}
+		}
+	}
+}

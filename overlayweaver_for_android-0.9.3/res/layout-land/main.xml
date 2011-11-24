@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    >
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/put_get_linear">
+
+	    <LinearLayout
+	        android:orientation="vertical"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:id="@+id/put_linear">
+	        	            <TextView  
+        android:id="@+id/txt1"
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" 
+        android:text=""
+        />
+        	        	            <TextView  
+        android:id="@+id/txt2"
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" 
+        android:text="電池残料"
+        />
+                <TextView  
+        android:id="@+id/txt3"
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" 
+        android:text=""
+        />
+
+		    <TextView
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:layout_alignParentLeft="true"
+		        android:textSize="14px"
+		        android:text="@string/KVMessage"
+		        android:layout_marginBottom="5px"/>
+		
+		    <RelativeLayout
+		        android:orientation="horizontal"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content">
+			    <TextView
+			        android:id="@+id/put_key_text_view"
+			        android:layout_width="wrap_content"
+			        android:layout_height="wrap_content"
+			        android:text="@string/KeyText" 
+			        android:layout_marginLeft="5px" 
+			        android:layout_marginRight="2px"/>
+			    <EditText
+			        android:id="@+id/put_key_edit_view"
+			        android:layout_width="wrap_content"
+			        android:layout_height="wrap_content"
+		            android:singleLine="true"
+			        android:layout_toRightOf="@+id/put_key_text_view" 
+			        android:layout_marginRight="10px"/>
+		
+			    <TextView
+			        android:id="@+id/put_value_text_view"
+			        android:layout_width="wrap_content"
+			        android:layout_height="wrap_content"
+			        android:text="@string/ValueText" 
+			        android:layout_toRightOf="@+id/put_key_edit_view"/>
+			    <EditText
+			        android:id="@+id/put_value_edit_view"
+			        android:layout_height="wrap_content"
+		            android:singleLine="true" 
+		            android:layout_toRightOf="@+id/put_value_text_view" 
+		            android:layout_width="wrap_content"/>
+			</RelativeLayout>
+		    <Button
+		        android:id="@+id/put_button"
+		           style="?android:attr/buttonStyleSmall"
+		        android:layout_height="wrap_content"
+		        android:layout_alignParentRight="true"
+		        android:text="@string/PutButton" 
+		        android:layout_marginTop="5px"
+		        android:layout_marginBottom="10px" android:layout_width="fill_parent"/>
+		</LinearLayout>
+	
+	    <LinearLayout
+	        android:orientation="vertical"
+	        android:layout_height="wrap_content" android:layout_width="fill_parent">
+	            <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/put_get_linear2">
+	        <Button android:layout_width="wrap_content" android:id="@+id/cpu_button" android:layout_height="wrap_content" android:text="get CPU"></Button>
+	        	        	<CheckBox android:text="通信除外check" android:id="@+id/checkBox1" android:layout_width="wrap_content" android:layout_height="wrap_content"></CheckBox>
+	        </LinearLayout>
+	
+	                <TextView  
+        android:id="@+id/txt4"
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" 
+        android:text=""
+        />
+	        
+
+		    <TextView
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:layout_alignParentLeft="true"
+		        android:textSize="14px"
+		        android:text="@string/GetMessage"
+		        android:layout_marginBottom="5px"/>
+		    <RelativeLayout
+		        android:orientation="horizontal"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content">
+			    <TextView
+			        android:id="@+id/get_key_text_view"
+			        android:layout_width="wrap_content"
+			        android:layout_height="wrap_content"
+			        android:layout_marginLeft="5px" 
+			        android:layout_marginRight="2px"
+			        android:text="@string/KeyText"/>
+			    <EditText
+			        android:id="@+id/get_key_edit_view"
+			        android:layout_height="wrap_content"
+		            android:singleLine="true" 
+		            android:layout_toRightOf="@+id/get_key_text_view" 
+		            android:layout_width="wrap_content"/>
+			</RelativeLayout>
+		    <Button
+		        android:id="@+id/get_button"
+		           style="?android:attr/buttonStyleSmall"
+		        android:layout_height="wrap_content"
+		        android:layout_alignParentRight="true"
+		        android:text="@string/GetButton" 
+		        android:layout_marginTop="5px"
+		        android:layout_marginBottom="10px" android:layout_width="fill_parent"/>
+		</LinearLayout>
+	</LinearLayout>
+
+
+    <EditText
+        android:id="@+id/log_view"
+        android:textSize="10px"
+        android:text="@string/LOGMessage" 
+        android:layout_height="fill_parent"
+        android:layout_width="fill_parent"
+        android:layout_marginTop="5px"
+        android:scrollbars="horizontal|vertical" android:gravity="top|left" android:editable="true" android:autoText="true"/>
+
+
+</LinearLayout>
