@@ -50,6 +50,7 @@ import mypackage.*;
 import ow.dht.ByteArray;
 import ow.dht.DHT;
 import ow.dht.DHTConfiguration;
+import ow.dht.DHTConfiguration.commFlag;
 
 import ow.dht.ValueInfo;
 import ow.dht.memcached.Memcached;
@@ -1358,6 +1359,20 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			Serializable[] contents = msg.getContents();
 			byte[] body = (byte[]) contents[C.MESSAGE_BODY];
 			byte[] key = (byte[]) contents[C.MESSAGE_PRIMALKEY];
+			
+			//hirose add
+			commFlag flag = config.getCommunicateMethodFlag();
+			switch(flag){
+			case Permit : // 通常の通信 
+				break;
+			
+			case Relay : // 中継のみ許可
+				break;
+				
+			case Reject : // 通信拒否
+				break;
+			}
+			
 
 			AnonymousRouteInfo arInfo = senderProcessMap.get(key);
 			ArrayList<SecretKey> keyList = arInfo.getKeyList();

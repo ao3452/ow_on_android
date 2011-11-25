@@ -315,4 +315,22 @@ public class DHTConfiguration {
 		this.selfHost = host;
 		return old;
 	}
+	
+	/////////////////////////////////////////////////////////
+	//    廣瀬が追加
+	//    通信方法変更用のフラグ管理
+	////////////////////////////////////////////////////////
+	public enum commFlag{
+		Permit,//通常通信
+		Relay,//中継のみ許可
+		Reject//通信拒否
+	}
+	private commFlag communicateMethodFlag=commFlag.Permit;
+	public commFlag getCommunicateMethodFlag(){ return this.communicateMethodFlag; }
+	public commFlag setCommunicateMethodFlag(commFlag newFlag){
+		commFlag old = this.communicateMethodFlag;
+		this.communicateMethodFlag = newFlag;
+		return old;
+	}
+	
 }
