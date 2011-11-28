@@ -27,10 +27,10 @@ import ow.messaging.util.MessagingUtility;
 import ow.routing.RoutingException;
 
 public final class Main {
-	
+
 	private final static short APPLICATION_ID = 0x01;
 	private final static short APPLICATION_VERSION = 2;
-	
+
 	private final static int OW_PORT = DHTConfiguration.DEFAULT_CONTACT_PORT;
 	private final static String JoinHOST = //"10.192.41.113";
 	                                            //"133.68.187.100";//CSE
@@ -43,12 +43,12 @@ enum Mesage{
 
 	private static DHT<MessageObject> dht = null;
 	private static DHTConfiguration dhtConfig = null;
-	
+
 	public static void main(String[] args) throws Exception{
-		
-		// アドレスの取得
+
+		// 繧｢繝峨Ξ繧ｹ縺ｮ蜿門ｾ�
 		InetAddress ipAddr = getLocalAddress();
-		// コンフィグ設定。変える場合は、自分でブートストラップを用意してください。
+		// 繧ｳ繝ｳ繝輔ぅ繧ｰ險ｭ螳壹�螟峨∴繧句�蜷医�縲∬�蛻�〒繝悶�繝医せ繝医Λ繝��繧堤畑諢上＠縺ｦ縺上□縺輔＞縲�
 		dhtConfig = DHTFactory.getDefaultConfiguration();
 		dhtConfig.setImplementationName("ChurnTolerantDHT");
 		dhtConfig.setMessagingTransport("TCP");
@@ -64,25 +64,25 @@ enum Mesage{
 			MessagingUtility.parseHostnameAndPort(ipAddr.getHostAddress(), OW_PORT);
 		dhtConfig.setSelfAddress(hostAndPort.getHostName());
 		dhtConfig.setSelfPort(hostAndPort.getPort());
-		
+
 			dht = DHTFactory.getDHT(APPLICATION_ID, APPLICATION_VERSION,dhtConfig,null);
 			//dht = DHTFactory.getDHT(APPLICATION_ID, APPLICATION_VERSION, dhtConfig, null);
-		
+
 		InetAddress bsIP = getBootstrapServer(ipAddr);
 		if(bsIP == null) {
 			System.out.print("Only mode... \n"+ ipAddr + "\n" + ipAddr.getHostAddress() + " " +ipAddr.getHostName()+ "\n");
 		} else {
 			System.out.print(bsIP + "\n" + bsIP.getHostAddress() + " " +bsIP.getHostName()+ "\n");
 			dht.joinOverlay(bsIP.getHostAddress(), OW_PORT);
-			
+
 		}
 		for(;;){
 			BufferedReader reader=new BufferedReader(new InputStreamReader(System.in));
 			String tmp=null;
-			
+
 				System.out.println("1.2.3");
 				tmp = reader.readLine();
-			
+
 			int a=0;
 			if (tmp.equals("put"))
 				a=1;
@@ -92,19 +92,19 @@ enum Mesage{
 				a=3;
 			else if(tmp.equals("exit"))
 				break;
-			
+
 			switch(a){
 			case 1:
-			
+
 					System.out.println("1");
 					put();
-			
+
 				break;
 			case 2:
-				
+
 					System.out.println("2");
 					get();
-				
+
 				break;
 			case 3:
 				System.out.println("3");
@@ -132,10 +132,10 @@ enum Mesage{
 		}
 	}
 	private static void init(){
-		
+
 	}
 	 private static InetAddress getBootstrapServer(InetAddress hostIP) {
-	    	
+
 	    	//InetSocketAddress iSock = new InetSocketAddress(JoinHOST, OW_PORT);
 			Socket socket = null;
 			InputStream in = null;
@@ -149,7 +149,7 @@ enum Mesage{
 				oout.writeObject(hostIP.getHostName());
 				//oout.writeObject(hostIP.getHostAddress());
 				//oout.writeObject("hakkoudasan.matlab.nitech.ac.jp");
-				
+
 				in = socket.getInputStream();
 			    ObjectInputStream oin = new ObjectInputStream(in);
 			    String bsIP = (String)oin.readObject();
@@ -160,7 +160,7 @@ enum Mesage{
 			    }
 			    InetAddress iNetAddr = InetAddress.getByName(bsIP);
 			    return iNetAddr;
-			    
+
 			} catch (Exception e) {
 			} finally {
 				try {
@@ -173,9 +173,9 @@ enum Mesage{
 				}
 			}
 			return null;
-	    	
+
 	    }
-	    
+
 	    private static InetAddress getLocalAddress() {
 			Enumeration enuIfs = null;
 			try {

@@ -236,7 +236,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		IDAddressPair selfIDAddress = this.getSelfIDAddressPair();
 		RoutingResult routingRes = this.routingSvc.join(addr); // throws
 		// RoutingException
-		
+
 		this.lastKey = selfIDAddress.getID();
 		this.lastRoutingResult = routingRes.stripRoutingContext();
 
@@ -982,24 +982,24 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			// send selfID and get corresponding private key
 			/*
 			 * ObjectInputStream ois; ObjectOutputStream oos; Socket sock;
-			 * 
+			 *
 			 * System.out.println("connect to PKG");
-			 * 
+			 *
 			 * sock = new Socket(C.ADDR_PKG , C.PORT_PKG); oos = new
 			 * ObjectOutputStream(sock.getOutputStream()); ois = new
 			 * ObjectInputStream(sock.getInputStream());
-			 * 
+			 *
 			 * System.out.println("request to PKG");
-			 * 
+			 *
 			 * String id = getSelfIDAddressPair().getID().toString();
 			 * oos.writeObject(id); oos.flush();
-			 * 
+			 *
 			 * Serializable ret[] = new Serializable[2]; ret = (Serializable[])
 			 * ois.readObject();
-			 * 
+			 *
 			 * myPrivateKey = (Point)MyUtility.bytes2Object((byte[])ret[0]); MPK
 			 * = (Point)MyUtility.bytes2Object((byte[])ret[1]);
-			 * 
+			 *
 			 * oos.close(); ois.close(); sock.close();
 			 */
 			// end communicate to PKG
@@ -1062,7 +1062,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		 * init_contact.getAddress().getHostAddress() + ":" +
 		 * init_contact.getAddress().getPort() +
 		 * "-r Recursive -t TCP --no-upnp -i " + selfID);
-		 * 
+		 *
 		 * } catch(IOException e) { // TODO Auto-generated catch block
 		 * e.printStackTrace(); } /* try {
 		 * resetBasicDHTImpl((short)Signature.APPLICATION_ID_DHT_SHELL,
@@ -1206,9 +1206,9 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	 * 本来はAnonymousRouteInfoの中では乱数を利用して中継ノードを決定する。
 	 * しかし、それ（乱数を使う場合）ではテストの際に不便である（かもしれない）。
 	 * この関数はAnonymousRouteInfoクラスを意図的に生成する。
-	 * 
+	 *
 	 * 未完成
-	 * 
+	 *
 	 * @return
 	 */
 	private AnonymousRouteInfo getIntentionalRouteInfo() {
@@ -1218,7 +1218,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 
 	/**
 	 * TODO 詳しい把握
-	 * 
+	 *
 	 * ぶっちゃけよく分かってないんです 誰か教えてくれ エラーが起きたとき上に渡すか、ここで処理するべきかが分からん
 	 */
 	private MessagingAddress getNeighberAddress(ID nextID) {
@@ -1236,9 +1236,9 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 
 	/**
 	 * 多段中継（匿名通信）用のメッセージを受け取った際に動作するハンドラ。
-	 * 
+	 *
 	 * @author nozomu
-	 * 
+	 *
 	 */
 	protected class RelayMessageHandler implements MessageHandler {
 		@Override
@@ -1257,6 +1257,9 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				break;
 			case C.TYPE_COMMUNICATION:
 				communicateProcess(msg);
+				break;
+			case C.TYPE_COMMUNICATION_CHANGE: // 廣瀬が追加 11/27
+				communicateChangeProcess();
 				break;
 			default:
 			//	System.out.println("定義していない型のメッセージを受け取りました");
@@ -1297,7 +1300,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 					// 復号するための情報を保存
 					RelayProcessSet toReceiverSide = new RelayProcessSet(null, secKey, nextHeader, C.DECRYPT);
 					relayProcessMap.put(encHeader, toReceiverSide);
-				
+
 					return;
 				}
 
@@ -1349,6 +1352,13 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				receiveMessageAsRelay(msg);
 			}
 		}
+		/*
+		 * 匿名路の変更のためのメッセージが来た場合の処理
+		 * 11/27 廣瀬が追加
+		 */
+		private void communicateChangeProcess() {
+			communicate(lastKey, MPK);
+		}
 	}
 
 	/*
@@ -1359,28 +1369,15 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			Serializable[] contents = msg.getContents();
 			byte[] body = (byte[]) contents[C.MESSAGE_BODY];
 			byte[] key = (byte[]) contents[C.MESSAGE_PRIMALKEY];
-			
-			//hirose add
-			commFlag flag = config.getCommunicateMethodFlag();
-			switch(flag){
-			case Permit : // 通常の通信 
-				break;
-			
-			case Relay : // 中継のみ許可
-				break;
-				
-			case Reject : // 通信拒否
-				break;
-			}
-			
+
 
 			AnonymousRouteInfo arInfo = senderProcessMap.get(key);
 			ArrayList<SecretKey> keyList = arInfo.getKeyList();
 
 			for (SecretKey secKey : keyList) {
 				body = CipherTools.decryptDataPadding(body, secKey);
-				
-				
+
+
 			}
 			//System.out.println("送信先（受信者）からの返信を受け取りました");
 		}
@@ -1400,51 +1397,63 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			byte[] body = (byte[]) contents[C.MESSAGE_BODY];
 			byte[] key = (byte[]) contents[C.MESSAGE_PRIMALKEY];
 
-			RelayProcessSet value = relayProcessMap.get(key);
-			SecretKey secKey = value.getSecretKey();
-			MessagingAddress dest = value.getDestMessagingAddress();
-			byte[] primalKey = value.getPrimalKey();
+			//廣瀬が追加 11/27
+			commFlag flag = config.getCommunicateMethodFlag();
+			switch(flag){
+			case Permit : // 通常の通信
+			case Relay : // 中継のみ許可
+				RelayProcessSet value = relayProcessMap.get(key);
+				SecretKey secKey = value.getSecretKey();
+				MessagingAddress dest = value.getDestMessagingAddress();
+				byte[] primalKey = value.getPrimalKey();
 
-			switch (value.getDecOrEnc()) {
-			case C.DECRYPT:
-				body = CipherTools.decryptDataPadding(body, secKey);
-				break;
-			case C.ENCRYPT:
-				body = CipherTools.encryptDataPadding(body, secKey);
-				break;
-			default:
-				// 到達するはずのない、到達したらおかしい場所
-		//		System.out.println("来るはずのない地点に到着しました。プログラムを見直してください");
-				return;
-			}
-
-			// もしも自身が受信者だった場合
-			if (dest == null) {
-		//		System.out.println("I'm receiver.");
-				Object mail = MyUtility.bytes2Object(body);
-				if (mail instanceof String) {
-			//		System.out.println("mail : " + mail.toString());
-					
-					// 返信のための処理
-					// 直接の送信先入手
-					IDAddressPair addr = msg.getSource();
-					MessagingAddress dest2 = getNeighberAddress(addr.getID());
-					
-					// メッセージ作成
-					String reply = mail.toString() + " ack";
-					body = MyUtility.object2Bytes(reply);
+				switch (value.getDecOrEnc()) {
+				case C.DECRYPT:
+					body = CipherTools.decryptDataPadding(body, secKey);
+					break;
+				case C.ENCRYPT:
 					body = CipherTools.encryptDataPadding(body, secKey);
-					msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, key);
-				//	System.out.println("send key hash : " + key.hashCode() + "\n");
-					// 送信
-					sender.send(dest2, msg);
+					break;
+				default:
+					// 到達するはずのない、到達したらおかしい場所
+			//		System.out.println("来るはずのない地点に到着しました。プログラムを見直してください");
+					return;
 				}
-				return;
+
+				// もしも自身が受信者だった場合
+				if (dest == null) {
+			//		System.out.println("I'm receiver.");
+					Object mail = MyUtility.bytes2Object(body);
+					if (mail instanceof String) {
+				//		System.out.println("mail : " + mail.toString());
+
+						// 返信のための処理
+						// 直接の送信先入手
+						IDAddressPair addr = msg.getSource();
+						MessagingAddress dest2 = getNeighberAddress(addr.getID());
+
+						// メッセージ作成
+						String reply = mail.toString() + " ack";
+						body = MyUtility.object2Bytes(reply);
+						body = CipherTools.encryptDataPadding(body, secKey);
+						msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, key);
+					//	System.out.println("send key hash : " + key.hashCode() + "\n");
+						// 送信
+						sender.send(dest2, msg);
+					}
+					return;
+				}
+
+				//System.out.println("send key hash : " + primalKey.hashCode() +"\n");
+				msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, primalKey);
+				sender.send(dest, msg);
+				break;
+
+			case Reject : // 通信拒否
+				//通信途中で拒否する場合の処理を書く
+				break;
 			}
 
-			//System.out.println("send key hash : " + primalKey.hashCode() +"\n");
-			msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, primalKey);
-			sender.send(dest, msg);
 		}
 		catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -1497,7 +1506,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 
 	/**
 	 * 目的先への匿名路がすでに存在するかどうかを判断する関数
-	 * 
+	 *
 	 * @param strID
 	 *            目的先のノードのIDをあらわす文字列
 	 * @return　匿名路が存在すればtrue、なければfalse
@@ -1506,7 +1515,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		return this.senderMap.containsKey(targetID);
 	}
 
-	
+
 	/*
 	 * (non-Javadoc)
 	 * @see ow.dht.DHT#notice(ow.id.ID)
@@ -1515,7 +1524,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	@Override
 	public void notice(ID departureID) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 }

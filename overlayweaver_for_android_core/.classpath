@@ -5,16 +5,5 @@
 	<classpathentry kind="lib" path="lib/clink170.jar"/>
 	<classpathentry kind="lib" path="lib/commons-cli-1.1.jar"/>
 	<classpathentry kind="lib" path="lib/je-3.3.75.jar"/>
-	<classpathentry kind="lib" path="/Bifrost_Original2/lib/collections-generic-4.01.jar"/>
-	<classpathentry kind="lib" path="/Bifrost_Original2/lib/commons-collections-3.2.1-javadoc.jar"/>
-	<classpathentry kind="lib" path="/Bifrost_Original2/lib/commons-collections-3.2.1.jar"/>
-	<classpathentry kind="lib" path="/Bifrost_Original2/lib/google-collect-1.0.jar"/>
-	<classpathentry kind="lib" path="/Bifrost_Original2/lib/jetty-util-6.1.14.jar"/>
-	<classpathentry kind="lib" path="/Bifrost_Original2/lib/jetty-6.1.14.jar"/>
-	<classpathentry kind="lib" path="/Bifrost_Original2/lib/servlet-api-2.5-6.1.14.jar"/>
-	<classpathentry kind="lib" path="/Bifrost_Original2/lib/ws-commons-util-1.0.2.jar"/>
-	<classpathentry kind="lib" path="/Bifrost_Original2/lib/xmlrpc-client-3.1.1.jar"/>
-	<classpathentry kind="lib" path="/Bifrost_Original2/lib/xmlrpc-common-3.1.1.jar"/>
-	<classpathentry kind="lib" path="/Bifrost_Original2/lib/xmlrpc-server-3.1.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

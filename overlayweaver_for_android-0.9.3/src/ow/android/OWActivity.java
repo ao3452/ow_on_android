@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OptionalDataException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -17,6 +18,7 @@ import java.util.Set;
 import ow.MessageObject;
 import ow.dht.DHT;
 import ow.dht.DHTConfiguration;
+import ow.dht.DHTConfiguration.commFlag;
 import ow.dht.DHTFactory;
 import ow.dht.ValueInfo;
 import ow.id.ID;
@@ -45,14 +47,14 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 public class OWActivity extends Activity {
-	
+
 	private int oldTime;
 	private int oldUse;
-	private boolean comFlag=false;
-	
+
+
 	private final static short APPLICATION_ID = 0x01;
 	private final static short APPLICATION_VERSION = 2;
-	
+
 	private final static int OW_PORT = DHTConfiguration.DEFAULT_CONTACT_PORT;
 	private final static String JoinHOST = //"10.192.41.113";
 	                                            //"133.68.187.100";//CSE
@@ -61,27 +63,27 @@ public class OWActivity extends Activity {
 
 	private DHT<MessageObject> dht = null;
 	private DHTConfiguration dhtConfig = null;
-	
-    private Handler mainHandler = new MainHandler(); 
+
+    private Handler mainHandler = new MainHandler();
     private Handler mHandler = new Handler();
     private Runnable mUpdateCpu;
 
-    
+
 	private EditText putKey = null;
 	private EditText putValue = null;
 	private EditText getKey = null;
 	private EditText logView = null;
-	
+
 	private TextView txt1 = null;
 	private TextView txt3 = null;
 	private TextView txt4 = null;
-	
+
 	private CheckBox checkBox = null;
-	
+
 	private Button putButton = null;
 	private Button getButton = null;
 	private Button getCpuButton = null;
-	
+
 	private OnClickListener putListerner = new OnClickListener() {
 
 		@Override
@@ -92,10 +94,10 @@ public class OWActivity extends Activity {
 				dht.put(ID.getSHA1BasedID(key.getBytes()), new MessageObject(value));
 				logView.append("PUT command : Key=" + key + "  Value=" + value + "\n");
 			} catch (Exception e) {
-				logView.append("PUT command : Key=" + key + "  Value=" + value + "  のPUTに失敗しました。\n");
-				
+				logView.append("PUT command : Key=" + key + "  Value=" + value + "  ��UT��け����障����\n");
+
 			}
-		}		
+		}
 	};
 	private OnClickListener getListerner = new OnClickListener() {
 
@@ -110,29 +112,28 @@ public class OWActivity extends Activity {
 					logView.append("GET command : Key=" + key + "  Value=" + mo.getValue().getFirst() + "\n");
 				}
 			} catch (RoutingException e) {
-				logView.append("GET command : Key=" + key + " のgetに失敗しました。\n");
+				logView.append("GET command : Key=" + key + " ��et��け����障����\n");
 			}
-			
+
 		}
-		
+
 	};
-	
+
 	private OnClickListener checkBoxListerner = new OnClickListener() {
-		
 		@Override
 		public void onClick(View v){
-			
+
 			if(checkBox.isChecked() == true){
-				comFlag=true;
-				txt4.setText("通信除外フラグ ON");
+				dhtConfig.setCommunicateMethodFlag(commFlag.Permit);
+				txt4.setText("��拭�ゅ������ON");
 			}else{
-				comFlag=false;
-				txt4.setText("通信除外フラグ OFF");
+				dhtConfig.setCommunicateMethodFlag(commFlag.Reject);
+				txt4.setText("��拭�ゅ������OFF");
 			}
 		}
-		
+
 	};
-	
+
 	private OnClickListener getCpuListerner = new OnClickListener() {
 
 		@Override
@@ -141,48 +142,48 @@ public class OWActivity extends Activity {
 			double dw =cpuUsed();
 			txt1.setText(dw+"%");
 		}
-		
+
 	};
-	
+
 	private int scale;
 	private int level;
-	
+
 	@Override
 	protected void onResume() {
 		super.onResume();
-		//受信を開始
+		//��拭���紮�
 		IntentFilter filter=new IntentFilter();
 		filter.addAction(Intent.ACTION_BATTERY_CHANGED);
 		registerReceiver(myReceiver,filter);
 	}
-	
+
 	@Override
 	protected void onPause() {
 		super.onPause();
-		//受信を停止
+		//��拭���罩�
 		unregisterReceiver(myReceiver);
 	}
 
-	//受信機
+	//��拭罘�
 	public BroadcastReceiver myReceiver = new BroadcastReceiver() {
 
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			if (intent.getAction().equals(Intent.ACTION_BATTERY_CHANGED)) {
-				// 電池残量の最大値
+				// �紙�罧�����紊у�
 				scale = intent.getIntExtra("scale", 0);
-				// 電池残量
+				// �紙�罧��
 				level = intent.getIntExtra("level", 0);
 			}
-			
-			//結果を描写
+
+			//腟������
 			txt3 = (TextView) findViewById(R.id.txt3);
 			txt3.setText(((float)level/(float)scale * 100)+" (%)");
 
 		}
 
 	};
-	
+
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -191,7 +192,7 @@ public class OWActivity extends Activity {
     	setContentView(R.layout.main);
     	Window win = getWindow();
     	win.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
- 
+
        putKey = (EditText)findViewById(R.id.put_key_edit_view);
        putValue = (EditText)findViewById(R.id.put_value_edit_view);
        getKey = (EditText)findViewById(R.id.get_key_edit_view);
@@ -208,27 +209,27 @@ public class OWActivity extends Activity {
     	   }
        };
        mHandler.postDelayed(mUpdateCpu, 100);
-       
+
        checkBox = (CheckBox)findViewById(R.id.checkBox1);
-       
+
        putButton = (Button)findViewById(R.id.put_button);
        getButton = (Button)findViewById(R.id.get_button);
        getCpuButton = (Button)findViewById(R.id.cpu_button);
-       
+
        putButton.setOnClickListener(putListerner);
        getButton.setOnClickListener(getListerner);
        getCpuButton.setOnClickListener(getCpuListerner);
        checkBox.setOnClickListener(checkBoxListerner);
     }
-    
-    
+
+
 	@Override
 	protected void onStart() {
 		super.onStart();
         if(dht != null) {
         	return;
         }
-        
+
 		try {
 			if (mainHandler != null) {
 				mainHandler.sendMessage
@@ -238,13 +239,13 @@ public class OWActivity extends Activity {
 	    	oldTime=(int) System.currentTimeMillis();
 	    	oldUse=checkCpuUse();
 //	    	logView.append(oldTime+" "+oldUse+"\n");
-			// アドレスの取得
+			// �≪��������
 			//InetAddress ipAddr = getLocalAddress();
 			//InetAddress ipAddr = getIpAddress();
 			InetAddress ipAddr = getWifiAddress();
 			Log.d("DHT", ipAddr.getHostAddress());
 			//logView.append("1 \n");
-			// コンフィグ設定。変える場合は、自分でブートストラップを用意してください。
+			// �潟�����域┃絎��紊����������������������������������������
 			dhtConfig = DHTFactory.getDefaultConfiguration();
 			dhtConfig.setImplementationName("ChurnTolerantDHT");
 			dhtConfig.setMessagingTransport("TCP");
@@ -266,9 +267,9 @@ public class OWActivity extends Activity {
 		//	dhtConfig.setSelfAddress("hakkoudasan.matlab.nitech.ac.jp");
 			dhtConfig.setSelfPort(hostAndPort.getPort());
 			//logView.append(hostAndPort.getPort()+"4 \n");
-			
+
 			dht = DHTFactory.getDHT(APPLICATION_ID, APPLICATION_VERSION, dhtConfig, null);
-			
+
 			logView.append(ipAddr+"\n");
 			InetAddress bsIP = getBootstrapServer(ipAddr);
 			if(bsIP == null) {
@@ -278,7 +279,7 @@ public class OWActivity extends Activity {
 				dht.joinOverlay(bsIP.getHostAddress(), OW_PORT);
 				logView.append("end\n");
 			}
-			
+
 		} catch (Exception e) {
 			logView.append("Don't join DHT network... now local mode... \n");
 		} finally {
@@ -289,9 +290,9 @@ public class OWActivity extends Activity {
 			}
 		}
 	}
-	
 
-	
+
+
 
 
 	private static final int DIALOG_LOADING = 0;
@@ -312,8 +313,8 @@ public class OWActivity extends Activity {
 			return super.onCreateDialog(id);
 		}
 	}
-	
-	
+
+
 	public static final int SHOW_LOADING = 5;
 	public static final int HIDE_LOADING = 6;
     private class MainHandler extends Handler {
@@ -363,8 +364,19 @@ public class OWActivity extends Activity {
 			logView.append("aaa \n");
 		    InetAddress iNetAddr = InetAddress.getByName(bsIP);
 		    return iNetAddr;
-		    
-		} catch (Exception e) {
+
+		} catch (UnknownHostException e) {
+			// TODO 自動生成された catch ブロック
+			e.printStackTrace();
+		} catch (OptionalDataException e) {
+			// TODO 自動生成された catch ブロック
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			// TODO 自動生成された catch ブロック
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO 自動生成された catch ブロック
+			e.printStackTrace();
 		} finally {
 			try {
 				if (socket != null) {
@@ -376,7 +388,7 @@ public class OWActivity extends Activity {
 			}
 		}
 		return null;
-    	
+
     }
     private InetAddress getIpAddress() {
     	logView.append("if1\n");
@@ -401,7 +413,7 @@ public class OWActivity extends Activity {
     	logView.append("ifueui\n");
         return getWifiAddress();
     }
-    
+
     private InetAddress getWifiAddress(){
     	InetAddress ip=null;
     	logView.append("if2\n");
@@ -420,7 +432,7 @@ public class OWActivity extends Activity {
 				ip = InetAddress.getByAddress(byteIPAddress);
 				logView.append(ip+"\n");
 			} catch (UnknownHostException e) {
-				// TODO 自動生成された catch ブロック
+				// TODO �����������catch ������
 				e.printStackTrace();
 			}
 		}
@@ -430,13 +442,13 @@ public class OWActivity extends Activity {
 				ip = InetAddress.getByAddress(byteIPAddress);
 				logView.append(ip+"\n");
 			} catch (UnknownHostException e) {
-				// TODO 自動生成された catch ブロック
+				// TODO �����������catch ������
 				e.printStackTrace();
 			}
 		}
     	return ip;
     }
- 
+
     private InetAddress getLocalAddress() {
 		Enumeration enuIfs = null;
 		try {
@@ -484,7 +496,7 @@ public class OWActivity extends Activity {
 						logView.append(ip+"\n");
 						ipAddr=ip;
 					} catch (UnknownHostException e) {
-						// TODO 自動生成された catch ブロック
+						// TODO �����������catch ������
 						e.printStackTrace();
 					}
 				}
@@ -493,9 +505,9 @@ public class OWActivity extends Activity {
 		return ipAddr;
 	}
     private ProcessBuilder cmd=null;
-    //cpu使用率を調べる
+    //cpu篏睡����茯帥���
     private Integer checkCpuUse(){
-    	// カーネル全体の統計情報を表示する
+    	// �����������輝荐���宴�茵�ず���
 
     	String [] cmdArgs = {"/system/bin/cat","/proc/stat"};
 
@@ -509,25 +521,25 @@ public class OWActivity extends Activity {
 
     	InputStream in  = process.getInputStream();
 
-    	// 統計情報より1024バイト分を読み込む
-    	// cpu user/nice/system/idle/iowait/irq/softirq/steal/の情報を取得する
-    	 
+    	// 腟沿�������1024����������粋昭��
+    	// cpu user/nice/system/idle/iowait/irq/softirq/steal/����宴�������
+
     	byte[] lineBytes = new byte[1024];
-    	 
+
     	while(in.read(lineBytes) != -1 ) {
 
     	cpuBuffer.append(new String(lineBytes));
     	}
-    	 
+
     	in.close();
 
     	}catch (IOException e) {
-    	 
+
     	}
-    	 
+
     	cpuLine = cpuBuffer.toString();
 
-    	// 1024バイトより「cpu～cpu0」までの文字列を抽出
+    	// 1024���������cpu鐔�pu0����с��������遵�
     	int start = cpuLine.indexOf("cpu");
     	int end = cpuLine.indexOf("cpu0");
     	cpuLine = cpuLine.substring(start, end);
@@ -542,18 +554,18 @@ public class OWActivity extends Activity {
     	Integer sys= new Integer(cpuUse[4]);
 
     	return usr+nice+sys;
-    	
+
     }
-    
+
     private float cpuUsed(){
       	 int nowTime=(int) System.currentTimeMillis();
       	 int nowUse=checkCpuUse();
-      // CPU利用率を算出
-     	float wd = ( (float)( nowUse - oldUse ) / (( nowTime - oldTime )/10));
+      // CPU������膊��
+     	float wd = ( (float)( nowUse - oldUse ) /(float) (( nowTime - oldTime )/10));
      	oldTime=nowTime;
      	oldUse=nowUse;
      	return wd;
     }
-    
-    
+
+
 }
