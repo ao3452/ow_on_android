@@ -1357,6 +1357,9 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		 * 11/27 廣瀬が追加
 		 */
 		private void communicateChangeProcess() {
+			//まだ実装してない・・・というかこの関数ではダメだと思う
+			//返信用の関数を用意して使わないと行けない。
+			//ただ、これは返信用で八田さんが実装してあるはずなので、それを利用してやりたい。
 			communicate(lastKey, MPK);
 		}
 	}
@@ -1397,7 +1400,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			byte[] body = (byte[]) contents[C.MESSAGE_BODY];
 			byte[] key = (byte[]) contents[C.MESSAGE_PRIMALKEY];
 
-			//廣瀬が追加 11/27
+			//廣瀬が変更 11/27
 			commFlag flag = config.getCommunicateMethodFlag();
 			switch(flag){
 			case Permit : // 通常の通信
