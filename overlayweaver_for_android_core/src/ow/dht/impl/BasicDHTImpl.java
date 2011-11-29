@@ -1259,6 +1259,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				communicateProcess(msg);
 				break;
 			case C.TYPE_COMMUNICATION_CHANGE: // 廣瀬が追加 11/27
+				//送信者のみ知ることが出来る
+				//つまり、通信を変更したいノードは平文のmsgにこのタグをつける
 				communicateChangeProcess();
 				break;
 			default:
@@ -1274,6 +1276,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		 */
 		private void constructProcess(Message recvMsg) {
 			try {
+
 				Serializable[] contents = recvMsg.getContents();
 				byte[] encHeader = (byte[]) contents[C.MESSAGE_HEADER];
 
@@ -1282,43 +1285,57 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				Object obj = MyUtility.bytes2Object(decHeader);
 				AnonymousHeader headerSet = (AnonymousHeader) obj;
 
-				// ヘッダから情報取得
-				ID nextID = headerSet.getNextID();
-				byte[] nextHeader = headerSet.getNextHeader();
-				SecretKey secKey = headerSet.getSharedKey();
+				//廣瀬が変更 11/29
+				commFlag flag = config.getCommunicateMethodFlag();
+				switch(flag){
+				case Permit : // 通常の通信
+				case Relay : // 中継のみ許可
+					// ヘッダから情報取得
+					ID nextID = headerSet.getNextID();
+					byte[] nextHeader = headerSet.getNextHeader();
+					SecretKey secKey = headerSet.getSharedKey();
 
-				// 自身が受信者だった場合の処理（次のIDが無ければ受信者）
-				if (nextID == null) {
-				//	System.out.println("I'm a actual receiver");
+					// 自身が受信者だった場合の処理（次のIDが無ければ受信者）
+					if (nextID == null) {
+						//	System.out.println("I'm a actual receiver");
 
-					// 送信者側への処理のための情報を保存
+						// 送信者側への処理のための情報を保存
+						IDAddressPair src = recvMsg.getSource();
+						MessagingAddress org = getNeighberAddress(src.getID());
+						RelayProcessSet toSenderSide = new RelayProcessSet(org, secKey, decHeader, C.ENCRYPT);
+						relayProcessMap.put(nextHeader, toSenderSide);
+
+						// 復号するための情報を保存
+						RelayProcessSet toReceiverSide = new RelayProcessSet(null, secKey, nextHeader, C.DECRYPT);
+						relayProcessMap.put(encHeader, toReceiverSide);
+
+						return;
+					}
+
+					Message sendMsg = DHTMessageFactory.getConstructMessage(getSelfIDAddressPair(), nextHeader);
+					MessagingAddress dest = getNeighberAddress(nextID);
+					sender.send(dest, sendMsg);
+
+					// 匿名通信を行う際の処理情報を保存
 					IDAddressPair src = recvMsg.getSource();
 					MessagingAddress org = getNeighberAddress(src.getID());
-					RelayProcessSet toSenderSide = new RelayProcessSet(org, secKey, decHeader, C.ENCRYPT);
+
+					// 送信者側への処理のための情報を保存
+					RelayProcessSet toSenderSide = new RelayProcessSet(org, secKey, encHeader, C.ENCRYPT);
 					relayProcessMap.put(nextHeader, toSenderSide);
 
-					// 復号するための情報を保存
-					RelayProcessSet toReceiverSide = new RelayProcessSet(null, secKey, nextHeader, C.DECRYPT);
+					// 受信者側への処理のための情報を保存
+					RelayProcessSet toReceiverSide = new RelayProcessSet(dest, secKey, nextHeader, C.DECRYPT);
 					relayProcessMap.put(encHeader, toReceiverSide);
+					break;
+				case Reject : //通信拒否時
+					// 匿名通信を行う際の処理情報を保存
+					IDAddressPair src1 = recvMsg.getSource();
+					MessagingAddress org1 = getNeighberAddress(src1.getID());
 
-					return;
+					//送信者に向けて通信拒否のメッセージを作成
+					Message sendMsg1 = DHTMessageFactory.getCommunicateMessage(src1, body, decHeader);
 				}
-
-				Message sendMsg = DHTMessageFactory.getConstructMessage(getSelfIDAddressPair(), nextHeader);
-				MessagingAddress dest = getNeighberAddress(nextID);
-				sender.send(dest, sendMsg);
-
-				// 匿名通信を行う際の処理情報を保存
-				IDAddressPair src = recvMsg.getSource();
-				MessagingAddress org = getNeighberAddress(src.getID());
-
-				// 送信者側への処理のための情報を保存
-				RelayProcessSet toSenderSide = new RelayProcessSet(org, secKey, encHeader, C.ENCRYPT);
-				relayProcessMap.put(nextHeader, toSenderSide);
-
-				// 受信者側への処理のための情報を保存
-				RelayProcessSet toReceiverSide = new RelayProcessSet(dest, secKey, nextHeader, C.DECRYPT);
-				relayProcessMap.put(encHeader, toReceiverSide);
 			}
 			catch (Exception e) {
 				e.printStackTrace();
@@ -1361,6 +1378,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			//返信用の関数を用意して使わないと行けない。
 			//ただ、これは返信用で八田さんが実装してあるはずなので、それを利用してやりたい。
 			communicate(lastKey, MPK);
+			//この関数ではダメ。ここでは新しい匿名路構築するための部分と作成したメッセージ再送の関数にしないと行けない
 		}
 	}
 
