@@ -1332,9 +1332,18 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 					// 匿名通信を行う際の処理情報を保存
 					IDAddressPair src1 = recvMsg.getSource();
 					MessagingAddress org1 = getNeighberAddress(src1.getID());
+					SecretKey secKey1 = headerSet.getSharedKey();
+
+					// メッセージ作成
+					String reply = "reject";
+					byte[] body = MyUtility.object2Bytes(reply);
+					body = CipherTools.encryptDataPadding(body, secKey1);
 
 					//送信者に向けて通信拒否のメッセージを作成
-					Message sendMsg1 = DHTMessageFactory.getCommunicateMessage(src1, body, decHeader);
+					//Message sendMsg1 = DHTMessageFactory.getCommunicateMessage(src1, body, decHeader);
+					Message msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, decHeader);
+					//送信
+					sender.send(org1,msg);
 				}
 			}
 			catch (Exception e) {
