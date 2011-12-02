@@ -111,4 +111,16 @@ public class DHTMessageFactory {
 		int tag = Tag.RELAY.getNumber();
 		return new Message(src, tag, null, (Serializable) body, primeKey, C.TYPE_COMMUNICATION);
 	}
+	
+	/**
+	 * 通信拒否用メッセージを作成する関数
+	 * @param src
+	 * @param body
+	 * @param hashValue
+	 * @return
+	 */
+	public static Message getCommunicateRejectMessage(IDAddressPair src, byte[] body, byte[] primeKey){
+		int tag = Tag.RELAY.getNumber();
+		return new Message(src, tag, null, (Serializable) body, primeKey, C.TYPE_COMMUNICATION_CHANGE);
+	}
 }

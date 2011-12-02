@@ -8,6 +8,7 @@ import javax.crypto.SecretKey;
 
 import edu.cityu.util.Point;
 
+import ow.dht.DHTConfiguration;
 import ow.id.ID;
 
 public class AnonymousRouteInfo {
@@ -55,7 +56,7 @@ public class AnonymousRouteInfo {
 	 * 
 	 * @throws NoSuchAlgorithmException
 	 */
-	public AnonymousRouteInfo(final ID targetID, final int latestIDLevel, final int relayCount) {
+	public AnonymousRouteInfo(final ID targetID, final int latestIDLevel, final int relayCount,DHTConfiguration config) {
 		try {
 			this.keysForAnonymity = new ArrayList<SecretKey>();
 			this.relayInfo = new ArrayList<LocalRouteInfo>();
@@ -81,6 +82,12 @@ public class AnonymousRouteInfo {
 				seed += 10;
 				ID relayID = ID.getLatestLevelID(latestIDLevel, seed);
 
+				//ここでrelayIDが拒否しているIDでないかを確認する関数を挿入
+				if(config.checkRejectNode(relayID)){
+					i--;
+					continue;
+				}				
+				
 				// 同じノードが連続することを回避
 				if (relayID.equals(nextID)) {
 					i--;

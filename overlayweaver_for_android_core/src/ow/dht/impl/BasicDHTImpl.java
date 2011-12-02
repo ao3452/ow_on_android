@@ -1128,7 +1128,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		// 本当は最新群の値は経路表から取得する必要があるが面倒なので固定値の４でとりあえず進める
 		// もちろん実験の場合は参加ノードの全てのIDレベルが４以上である必要がある
 		int latestIDLevel = 4;
-		AnonymousRouteInfo constructInfo = new AnonymousRouteInfo(targetID, latestIDLevel, relayCount);
+		AnonymousRouteInfo constructInfo = new AnonymousRouteInfo(targetID, latestIDLevel, relayCount, config);
 		constructInfo.printRouteInfo();
 
 		// 直接の送信先を取得
@@ -1261,7 +1261,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			case C.TYPE_COMMUNICATION_CHANGE: // 廣瀬が追加 11/27
 				//送信者のみ知ることが出来る
 				//つまり、通信を変更したいノードは平文のmsgにこのタグをつける
-				communicateChangeProcess();
+				//うん、上のは無理。新しいタグを作ってそれに応じて新しいメッセージ経路を作成。
+				communicateProcess(msg);
 				break;
 			default:
 			//	System.out.println("定義していない型のメッセージを受け取りました");
@@ -1330,7 +1331,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 					break;
 				case Reject : //通信拒否時
 					//通信拒否のメッセージの送信
-					communicateReject(recvMsg,headerSet,decHeader);
+					communicateReject(recvMsg,headerSet.getSharedKey(),decHeader);
 				}
 			}
 			catch (Exception e) {
@@ -1369,7 +1370,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		 * 匿名路の変更のためのメッセージが来た場合の処理
 		 * 11/27 廣瀬が追加
 		 */
-		private void communicateChangeProcess() {
+		private void communicateChangeProcess(Message msg) {
 			//まだ実装してない・・・というかこの関数ではダメだと思う
 			//返信用の関数を用意して使わないと行けない。
 			//ただ、これは返信用で八田さんが実装してあるはずなので、それを利用してやりたい。
@@ -1386,15 +1387,24 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			Serializable[] contents = msg.getContents();
 			byte[] body = (byte[]) contents[C.MESSAGE_BODY];
 			byte[] key = (byte[]) contents[C.MESSAGE_PRIMALKEY];
-
+			int type = (Integer) contents[C.MESSAGE_TYPE];
 
 			AnonymousRouteInfo arInfo = senderProcessMap.get(key);
 			ArrayList<SecretKey> keyList = arInfo.getKeyList();
-
-			for (SecretKey secKey : keyList) {
-				body = CipherTools.decryptDataPadding(body, secKey);
-
-
+			switch(type){
+			case C.TYPE_COMMUNICATION :
+				for (SecretKey secKey : keyList) {
+					body = CipherTools.decryptDataPadding(body, secKey);
+				}
+				break;
+			case C.TYPE_COMMUNICATION_CHANGE :
+				for (SecretKey secKey : keyList) {
+					body = CipherTools.decryptDataPadding(body, secKey);
+					//平文かどうか
+				}
+				IDAddressPair rejectNode = (IDAddressPair)MyUtility.bytes2Object(body);
+				//拒否するノードを登録
+				config.setRejectID(rejectNode.getID());
 			}
 			//System.out.println("送信先（受信者）からの返信を受け取りました");
 		}
@@ -1413,17 +1423,18 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			Serializable[] contents = msg.getContents();
 			byte[] body = (byte[]) contents[C.MESSAGE_BODY];
 			byte[] key = (byte[]) contents[C.MESSAGE_PRIMALKEY];
+			int type = (Integer) contents[C.MESSAGE_TYPE];
 
+			RelayProcessSet value = relayProcessMap.get(key);
+			SecretKey secKey = value.getSecretKey();
 			//廣瀬が変更 11/27
 			commFlag flag = config.getCommunicateMethodFlag();
 			switch(flag){
 			case Permit : // 通常の通信
 			case Relay : // 中継のみ許可
-				RelayProcessSet value = relayProcessMap.get(key);
-				SecretKey secKey = value.getSecretKey();
 				MessagingAddress dest = value.getDestMessagingAddress();
 				byte[] primalKey = value.getPrimalKey();
-
+				
 				switch (value.getDecOrEnc()) {
 				case C.DECRYPT:
 					body = CipherTools.decryptDataPadding(body, secKey);
@@ -1460,15 +1471,23 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 					}
 					return;
 				}
-
-				//System.out.println("send key hash : " + primalKey.hashCode() +"\n");
-				msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, primalKey);
-				sender.send(dest, msg);
+				//受信したメッセージのタイプによって送信方法の変更
+				switch(type){
+				case C.TYPE_COMMUNICATION : 
+					//System.out.println("send key hash : " + primalKey.hashCode() +"\n");
+					msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, primalKey);
+					sender.send(dest, msg);
+					break;
+				case C.TYPE_COMMUNICATION_CHANGE : 
+					//System.out.println("send key hash : " + primalKey.hashCode() +"\n");
+					msg = DHTMessageFactory.getCommunicateRejectMessage(getSelfIDAddressPair(), body, primalKey);
+					sender.send(dest, msg);
+					break;
+				}
 				break;
-
 			case Reject : // 通信拒否
 				//通信途中で拒否する場合の処理を書く
-				communicateReject(recvMsg,)
+				communicateReject(msg,secKey,key);
 				break;
 			}
 
@@ -1550,28 +1569,27 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	 *
 	 * @param Message
 	 *            受信しているメッセージ
-	 * @param AnonymousHeader
-	 *            受信したメッセージについているヘッダ部 （これはいらないかも・・・？）
+	 * @param SecretKey
+	 *            共通鍵
 	 * @param byte[]
 	 *            複号したヘッダ部（これもいらない・・・？）
 	 * @author Hirose
 	 *
 	 */
-	public void communicateReject(Message recvMsg,AnonymousHeader headerSet,byte[] decHeader){
+	public void communicateReject(Message recvMsg,SecretKey secKey1,byte[] decHeader){
 		try{
 		// 匿名通信を行う際の処理情報を保存
 		IDAddressPair src1 = recvMsg.getSource();
 		MessagingAddress org1 = getNeighberAddress(src1.getID());
-		SecretKey secKey1 = headerSet.getSharedKey();
 
 		// メッセージ作成
-		String reply = "reject";
+		IDAddressPair reply = getSelfIDAddressPair();
 		byte[] body = MyUtility.object2Bytes(reply);
 		body = CipherTools.encryptDataPadding(body, secKey1);
 
 		//送信者に向けて通信拒否のメッセージを作成
 		//Message sendMsg1 = DHTMessageFactory.getCommunicateMessage(src1, body, decHeader);
-		Message msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, decHeader);
+		Message msg = DHTMessageFactory.getCommunicateRejectMessage(getSelfIDAddressPair(), body, decHeader);
 		//送信
 		sender.send(org1,msg);
 		}

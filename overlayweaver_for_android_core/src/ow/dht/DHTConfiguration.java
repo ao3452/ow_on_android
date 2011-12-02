@@ -17,6 +17,9 @@
 
 package ow.dht;
 
+import ow.id.ID;
+import ow.id.IDAddressPair;
+
 public class DHTConfiguration {
 	public final static String DEFAULT_IMPL_NAME = "ChurnTolerantDHT";
 //	public final static String DEFAULT_IMPL_NAME = "BasicDHT";
@@ -331,6 +334,21 @@ public class DHTConfiguration {
 		commFlag old = this.communicateMethodFlag;
 		this.communicateMethodFlag = newFlag;
 		return old;
+	}
+	
+	public final int REJECT_NODE_NUMBER = 10;
+	private int rejectNodeNumber = 0;
+	private ID rejectID[] = new ID[REJECT_NODE_NUMBER];
+	public int getRejectNodeNumber(){ return rejectNodeNumber; }
+	public void setRejectID(ID newID){
+		rejectID[rejectNodeNumber++] = newID;
+	}
+	public boolean checkRejectNode(ID checkID){
+		for(int i = 0 ; i < rejectNodeNumber ; i++){
+			if(rejectID[i].equals(checkID))
+				return true;
+		}
+		return false;
 	}
 	
 }
