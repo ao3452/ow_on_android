@@ -113,7 +113,19 @@ public class DHTMessageFactory {
 	}
 	
 	/**
-	 * 通信拒否用メッセージを作成する関数
+	 * 暗号処理なし用メッセージを作成する関数
+	 * @param src
+	 * @param body
+	 * @param hashValue
+	 * @return
+	 */
+	public static Message getCommunicateRelayMessage(IDAddressPair src, byte[] body, byte[] primeKey){
+		int tag = Tag.RELAY.getNumber();
+		return new Message(src, tag, null, (Serializable) body, primeKey, C.TYPE_COMMUNICATION_RELAY);
+	}
+	
+	/**
+	 * 中継拒否用メッセージを作成する関数
 	 * @param src
 	 * @param body
 	 * @param hashValue
@@ -121,6 +133,18 @@ public class DHTMessageFactory {
 	 */
 	public static Message getCommunicateRejectMessage(IDAddressPair src, byte[] body, byte[] primeKey){
 		int tag = Tag.RELAY.getNumber();
-		return new Message(src, tag, null, (Serializable) body, primeKey, C.TYPE_COMMUNICATION_CHANGE);
+		return new Message(src, tag, null, (Serializable) body, primeKey, C.TYPE_COMMUNICATION_REJECT);
+	}
+	
+	/**
+	 * 了承通知用メッセージを作成する関数
+	 * @param src
+	 * @param body
+	 * @param hashValue
+	 * @return
+	 */
+	public static Message getChangeApproveMessage(IDAddressPair src, byte[] body, byte[] primeKey){
+		int tag = Tag.RELAY.getNumber();
+		return new Message(src, tag, null, (Serializable) body, primeKey, C.TYPE_CHANGE_APPROVE);
 	}
 }

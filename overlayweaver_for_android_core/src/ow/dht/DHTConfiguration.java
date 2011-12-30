@@ -320,9 +320,10 @@ public class DHTConfiguration {
 	}
 	
 	/////////////////////////////////////////////////////////
-	//    廣瀬が追加
-	//    通信方法変更用のフラグ管理
+	//    以下廣瀬が追加
 	////////////////////////////////////////////////////////
+	
+	//    通信方法変更用のフラグ管理
 	public enum commFlag{
 		Permit,//通常通信
 		Relay,//中継のみ許可
@@ -336,12 +337,27 @@ public class DHTConfiguration {
 		return old;
 	}
 	
+	//変更通知用のフラグ
+	private commFlag oldCommFlag=commFlag.Permit;
+	public void setOldCommFlag(){ oldCommFlag=communicateMethodFlag;	}
+	public boolean checkCommFlag(){
+		if(this.communicateMethodFlag==oldCommFlag){
+			return true;
+		}
+		return false;
+	}
+	
+	//中継拒否リスト用変数
 	public final int REJECT_NODE_NUMBER = 10;
 	private int rejectNodeNumber = 0;
 	private ID rejectID[] = new ID[REJECT_NODE_NUMBER];
 	public int getRejectNodeNumber(){ return rejectNodeNumber; }
 	public void setRejectID(ID newID){
 		rejectID[rejectNodeNumber++] = newID;
+		//設定以上のリスト登録があった場合、リストの上書きを始める
+		if(REJECT_NODE_NUMBER==rejectNodeNumber){
+			rejectNodeNumber=0;
+		}
 	}
 	public boolean checkRejectNode(ID checkID){
 		for(int i = 0 ; i < rejectNodeNumber ; i++){
@@ -349,6 +365,15 @@ public class DHTConfiguration {
 				return true;
 		}
 		return false;
+	}
+	
+	//了承通知用のフラグ管理
+	private boolean approvalChangeFlag = false;
+	public boolean getApprovalChangeFlag(){ return approvalChangeFlag; }
+	public boolean setApprovalChangeFlag(boolean newFlag){
+		boolean old = this.approvalChangeFlag;
+		this.approvalChangeFlag = newFlag;
+		return old;
 	}
 	
 }

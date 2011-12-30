@@ -1258,7 +1258,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			case C.TYPE_COMMUNICATION:
 				communicateProcess(msg);
 				break;
-			case C.TYPE_COMMUNICATION_CHANGE: // 廣瀬が追加 11/27
+			case C.TYPE_COMMUNICATION_REJECT: // 廣瀬が追加 11/27
 				//送信者のみ知ることが出来る
 				//つまり、通信を変更したいノードは平文のmsgにこのタグをつける
 				//うん、上のは無理。新しいタグを作ってそれに応じて新しいメッセージ経路を作成。
@@ -1276,67 +1276,27 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		 * 匿名路構築のためのメッセージが来た場合の処理
 		 */
 		private void constructProcess(Message recvMsg) {
-			try {
-
-				Serializable[] contents = recvMsg.getContents();
-				byte[] encHeader = (byte[]) contents[C.MESSAGE_HEADER];
-
-				// 自身の持つ秘密鍵で復号
-				byte[] decHeader = CipherTools.decryptByIBEPadding(encHeader, myPrivateKey);
-				Object obj = MyUtility.bytes2Object(decHeader);
-				AnonymousHeader headerSet = (AnonymousHeader) obj;
-
-				//廣瀬が変更 11/29
-				commFlag flag = config.getCommunicateMethodFlag();
-				switch(flag){
-				case Permit : // 通常の通信
-				case Relay : // 中継のみ許可
-					// ヘッダから情報取得
-					ID nextID = headerSet.getNextID();
-					byte[] nextHeader = headerSet.getNextHeader();
-					SecretKey secKey = headerSet.getSharedKey();
-
-					// 自身が受信者だった場合の処理（次のIDが無ければ受信者）
-					if (nextID == null) {
-						//	System.out.println("I'm a actual receiver");
-
-						// 送信者側への処理のための情報を保存
-						IDAddressPair src = recvMsg.getSource();
-						MessagingAddress org = getNeighberAddress(src.getID());
-						RelayProcessSet toSenderSide = new RelayProcessSet(org, secKey, decHeader, C.ENCRYPT);
-						relayProcessMap.put(nextHeader, toSenderSide);
-
-						// 復号するための情報を保存
-						RelayProcessSet toReceiverSide = new RelayProcessSet(null, secKey, nextHeader, C.DECRYPT);
-						relayProcessMap.put(encHeader, toReceiverSide);
-
-						return;
-					}
-
-					Message sendMsg = DHTMessageFactory.getConstructMessage(getSelfIDAddressPair(), nextHeader);
-					MessagingAddress dest = getNeighberAddress(nextID);
-					sender.send(dest, sendMsg);
-
-					// 匿名通信を行う際の処理情報を保存
-					IDAddressPair src = recvMsg.getSource();
-					MessagingAddress org = getNeighberAddress(src.getID());
-
-					// 送信者側への処理のための情報を保存
-					RelayProcessSet toSenderSide = new RelayProcessSet(org, secKey, encHeader, C.ENCRYPT);
-					relayProcessMap.put(nextHeader, toSenderSide);
-
-					// 受信者側への処理のための情報を保存
-					RelayProcessSet toReceiverSide = new RelayProcessSet(dest, secKey, nextHeader, C.DECRYPT);
-					relayProcessMap.put(encHeader, toReceiverSide);
-					break;
-				case Reject : //通信拒否時
-					//通信拒否のメッセージの送信
-					communicateReject(recvMsg,headerSet.getSharedKey(),decHeader);
-				}
+			
+			//廣瀬が変更 11/29
+			commFlag flag = config.getCommunicateMethodFlag();
+			switch(flag){
+			case Permit : // 通常の中継
+				ordinaryConstructMessage(recvMsg);
+				break;
+				
+			case Relay : // 中継のみ許可
+				//変更通知作成して送信者に送信
+				constructChange(recvMsg,flag);
+				//次のノードへ通常通りの中継を行う
+				ordinaryConstructMessage(recvMsg);
+				break;
+				
+			case Reject : //中継拒否時
+				//通信拒否のメッセージの送信
+				constructChange(recvMsg,flag);
+				break;
 			}
-			catch (Exception e) {
-				e.printStackTrace();
-			}
+			
 		}
 
 		/*
@@ -1397,10 +1357,14 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 					body = CipherTools.decryptDataPadding(body, secKey);
 				}
 				break;
-			case C.TYPE_COMMUNICATION_CHANGE :
+			case C.TYPE_COMMUNICATION_REJECT :
 				for (SecretKey secKey : keyList) {
 					body = CipherTools.decryptDataPadding(body, secKey);
-					//平文かどうか
+					
+					//
+					//平文かどうか確認する機構を追加しないといけない
+					//
+					
 				}
 				IDAddressPair rejectNode = (IDAddressPair)MyUtility.bytes2Object(body);
 				//拒否するノードを登録
@@ -1420,81 +1384,35 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	 */
 	private void receiveMessageAsRelay(Message msg) {
 		try {
-			Serializable[] contents = msg.getContents();
-			byte[] body = (byte[]) contents[C.MESSAGE_BODY];
-			byte[] key = (byte[]) contents[C.MESSAGE_PRIMALKEY];
-			int type = (Integer) contents[C.MESSAGE_TYPE];
-
-			RelayProcessSet value = relayProcessMap.get(key);
-			SecretKey secKey = value.getSecretKey();
 			//廣瀬が変更 11/27
 			commFlag flag = config.getCommunicateMethodFlag();
 			switch(flag){
-			case Permit : // 通常の通信
-			case Relay : // 中継のみ許可
-				MessagingAddress dest = value.getDestMessagingAddress();
-				byte[] primalKey = value.getPrimalKey();
-				
-				switch (value.getDecOrEnc()) {
-				case C.DECRYPT:
-					body = CipherTools.decryptDataPadding(body, secKey);
-					break;
-				case C.ENCRYPT:
-					body = CipherTools.encryptDataPadding(body, secKey);
-					break;
-				default:
-					// 到達するはずのない、到達したらおかしい場所
-			//		System.out.println("来るはずのない地点に到着しました。プログラムを見直してください");
-					return;
-				}
-
-				// もしも自身が受信者だった場合
-				if (dest == null) {
-			//		System.out.println("I'm receiver.");
-					Object mail = MyUtility.bytes2Object(body);
-					if (mail instanceof String) {
-				//		System.out.println("mail : " + mail.toString());
-
-						// 返信のための処理
-						// 直接の送信先入手
-						IDAddressPair addr = msg.getSource();
-						MessagingAddress dest2 = getNeighberAddress(addr.getID());
-
-						// メッセージ作成
-						String reply = mail.toString() + " ack";
-						body = MyUtility.object2Bytes(reply);
-						body = CipherTools.encryptDataPadding(body, secKey);
-						msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, key);
-					//	System.out.println("send key hash : " + key.hashCode() + "\n");
-						// 送信
-						sender.send(dest2, msg);
-					}
-					return;
-				}
-				//受信したメッセージのタイプによって送信方法の変更
-				switch(type){
-				case C.TYPE_COMMUNICATION : 
-					//System.out.println("send key hash : " + primalKey.hashCode() +"\n");
-					msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, primalKey);
-					sender.send(dest, msg);
-					break;
-				case C.TYPE_COMMUNICATION_CHANGE : 
-					//System.out.println("send key hash : " + primalKey.hashCode() +"\n");
-					msg = DHTMessageFactory.getCommunicateRejectMessage(getSelfIDAddressPair(), body, primalKey);
-					sender.send(dest, msg);
-					break;
-				}
+			case Permit : // 通常の中継
+				ordinaryCommunicateMessage(msg);
 				break;
-			case Reject : // 通信拒否
+			case Relay : // 中継のみ許可
+				//変更通知を作成しているかを確認
+				if(!(config.checkCommFlag())){
+					//変更通知作成して通常通りの中継も行う
+					communicateChange(msg,flag);
+					
+					ordinaryCommunicateMessage(msg);
+					
+				}else{
+					//了承通知を受信しているかを確認
+					
+					//受信していたら識別タグを読み取り次のノードへ送信
+					
+					//受信していないなら通常通りの中継
+					
+				}
+				
+			case Reject : // 中継拒否
 				//通信途中で拒否する場合の処理を書く
-				communicateReject(msg,secKey,key);
+				communicateChange(msg,flag);
 				break;
 			}
 
-		}
-		catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
 		catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -1565,37 +1483,261 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	}
 
 	/**
-	 * 通信拒否のメッセージを送信者に送信する関数
+	 * 匿名路構築後に変更通知を送信者に送信する関数
 	 *
 	 * @param Message
 	 *            受信しているメッセージ
-	 * @param SecretKey
-	 *            共通鍵
-	 * @param byte[]
-	 *            複号したヘッダ部（これもいらない・・・？）
+	 * @param commFlag
+	 *            現在の選択肢のフラグ状況
 	 * @author Hirose
 	 *
 	 */
-	public void communicateReject(Message recvMsg,SecretKey secKey1,byte[] decHeader){
+	public void constructChange(Message recvMsg,commFlag flag){
 		try{
-		// 匿名通信を行う際の処理情報を保存
-		IDAddressPair src1 = recvMsg.getSource();
-		MessagingAddress org1 = getNeighberAddress(src1.getID());
+			Serializable[] contents = recvMsg.getContents();
+			byte[] encHeader = (byte[]) contents[C.MESSAGE_HEADER];
 
-		// メッセージ作成
-		IDAddressPair reply = getSelfIDAddressPair();
-		byte[] body = MyUtility.object2Bytes(reply);
-		body = CipherTools.encryptDataPadding(body, secKey1);
-
-		//送信者に向けて通信拒否のメッセージを作成
-		//Message sendMsg1 = DHTMessageFactory.getCommunicateMessage(src1, body, decHeader);
-		Message msg = DHTMessageFactory.getCommunicateRejectMessage(getSelfIDAddressPair(), body, decHeader);
-		//送信
-		sender.send(org1,msg);
+			// 自身の持つ秘密鍵で復号
+			byte[] decHeader = CipherTools.decryptByIBEPadding(encHeader, myPrivateKey);
+			Object obj = MyUtility.bytes2Object(decHeader);
+			AnonymousHeader headerSet = (AnonymousHeader) obj;
+			
+			// ヘッダから情報取得
+			SecretKey secKey = headerSet.getSharedKey();
+			
+			// 匿名通信を行う際の処理情報を保存
+			IDAddressPair src1 = recvMsg.getSource();
+			MessagingAddress org1 = getNeighberAddress(src1.getID());
+			
+			// メッセージ作成
+			IDAddressPair reply = getSelfIDAddressPair();
+			byte[] body = MyUtility.object2Bytes(reply);
+			body = CipherTools.encryptDataPadding(body, secKey);
+			
+			//送信者に向けて変更通知用のメッセージを作成
+			//Message sendMsg1 = DHTMessageFactory.getCommunicateMessage(src1, body, key);
+			Message msg;
+			switch(flag){
+			case Relay :
+				msg = DHTMessageFactory.getCommunicateRelayMessage(getSelfIDAddressPair(), body, decHeader);
+				break;
+			case Reject : 
+				msg = DHTMessageFactory.getCommunicateRejectMessage(getSelfIDAddressPair(), body, decHeader);
+				break;
+			default :
+				msg = null;	
+			}
+			//送信
+			sender.send(org1,msg);
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * 匿名路構築後に変更通知を送信者に送信する関数
+	 *
+	 * @param Message
+	 *            受信しているメッセージ
+	 * @param commFlag
+	 *            現在の選択肢のフラグ状況
+	 * @author Hirose
+	 *
+	 */
+	public void communicateChange(Message recvMsg,commFlag flag){
+		try{
+			Serializable[] contents = recvMsg.getContents();
+			byte[] key = (byte[]) contents[C.MESSAGE_PRIMALKEY];
+			
+			RelayProcessSet value = relayProcessMap.get(key);
+			SecretKey secKey = value.getSecretKey();
+			// 匿名通信を行う際の処理情報を保存
+			IDAddressPair src1 = recvMsg.getSource();
+			MessagingAddress org1 = getNeighberAddress(src1.getID());
+			
+			// メッセージ作成
+			IDAddressPair reply = getSelfIDAddressPair();
+			byte[] body = MyUtility.object2Bytes(reply);
+			body = CipherTools.encryptDataPadding(body, secKey);
+			
+			//送信者に向けて変更通知用のメッセージを作成
+			//Message sendMsg1 = DHTMessageFactory.getCommunicateMessage(src1, body, key);
+			Message msg;
+			switch(flag){
+			case Relay :
+				msg = DHTMessageFactory.getCommunicateRelayMessage(getSelfIDAddressPair(), body, key);
+				break;
+			case Reject : 
+				msg = DHTMessageFactory.getCommunicateRejectMessage(getSelfIDAddressPair(), body, key);
+				break;
+			default :
+				msg = null;	
+			}
+			//送信
+			sender.send(org1,msg);
 		}
 		catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
+	/**
+	 * 通常の中継を行うための関数
+	 * 
+	 * @param Message
+	 *            受信しているメッセージ
+	 * @author hirose
+	 * 
+	 */
+	private void ordinaryCommunicateMessage(Message msg){
+		try {
+			Serializable[] contents = msg.getContents();
+			byte[] body = (byte[]) contents[C.MESSAGE_BODY];
+			byte[] key = (byte[]) contents[C.MESSAGE_PRIMALKEY];
+			int type = (Integer) contents[C.MESSAGE_TYPE];
+
+			RelayProcessSet value = relayProcessMap.get(key);
+			SecretKey secKey = value.getSecretKey();
+			
+			MessagingAddress dest = value.getDestMessagingAddress();
+			byte[] primalKey = value.getPrimalKey();
+			
+			switch (value.getDecOrEnc()) {
+			case C.DECRYPT:
+				body = CipherTools.decryptDataPadding(body, secKey);
+				break;
+			case C.ENCRYPT:
+				body = CipherTools.encryptDataPadding(body, secKey);
+				break;
+			default:
+				// 到達するはずのない、到達したらおかしい場所
+		//		System.out.println("来るはずのない地点に到着しました。プログラムを見直してください");
+				return;
+			}
+
+			// もしも自身が受信者だった場合
+			if (dest == null) {
+		//		System.out.println("I'm receiver.");
+				Object mail = MyUtility.bytes2Object(body);
+				if (mail instanceof String) {
+			//		System.out.println("mail : " + mail.toString());
+
+					// 返信のための処理
+					// 直接の送信先入手
+					IDAddressPair addr = msg.getSource();
+					MessagingAddress dest2 = getNeighberAddress(addr.getID());
+
+					// メッセージ作成
+					String reply = mail.toString() + " ack";
+					body = MyUtility.object2Bytes(reply);
+					body = CipherTools.encryptDataPadding(body, secKey);
+					msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, key);
+				//	System.out.println("send key hash : " + key.hashCode() + "\n");
+					// 送信
+					sender.send(dest2, msg);
+				}
+				return;
+			}
+			//受信したメッセージのタイプによって送信方法の変更
+			switch(type){
+			case C.TYPE_COMMUNICATION : 
+				//System.out.println("send key hash : " + primalKey.hashCode() +"\n");
+				msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, primalKey);
+				sender.send(dest, msg);
+				break;
+				
+				//中継拒否用の変更通知用
+			case C.TYPE_COMMUNICATION_REJECT : 
+				//System.out.println("send key hash : " + primalKey.hashCode() +"\n");
+				msg = DHTMessageFactory.getCommunicateRejectMessage(getSelfIDAddressPair(), body, primalKey);
+				sender.send(dest, msg);
+				break;
+				
+				//暗号処理なし用の変更通知用
+			case C.TYPE_COMMUNICATION_RELAY :
+				//System.out.println("send key hash : " + primalKey.hashCode() +"\n");
+				msg = DHTMessageFactory.getCommunicateRelayMessage(getSelfIDAddressPair(), body, primalKey);
+				sender.send(dest, msg);
+				break;
+				
+				//了承通知用
+			case C.TYPE_CHANGE_APPROVE : 
+				//System.out.println("send key hash : " + primalKey.hashCode() +"\n");
+				msg = DHTMessageFactory.getChangeApproveMessage(getSelfIDAddressPair(), body, primalKey);
+				sender.send(dest, msg);
+				break;
+			}
+		}
+		catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * 通常の中継を行うための関数
+	 * 
+	 * @param Message
+	 *            受信しているメッセージ
+	 * @author hirose
+	 * 
+	 */
+	private void ordinaryConstructMessage(Message recvMsg){
+		try {
+
+			Serializable[] contents = recvMsg.getContents();
+			byte[] encHeader = (byte[]) contents[C.MESSAGE_HEADER];
+
+			// 自身の持つ秘密鍵で復号
+			byte[] decHeader = CipherTools.decryptByIBEPadding(encHeader, myPrivateKey);
+			Object obj = MyUtility.bytes2Object(decHeader);
+			AnonymousHeader headerSet = (AnonymousHeader) obj;
+			
+			// ヘッダから情報取得
+			ID nextID = headerSet.getNextID();
+			byte[] nextHeader = headerSet.getNextHeader();
+			SecretKey secKey = headerSet.getSharedKey();
+
+			// 自身が受信者だった場合の処理（次のIDが無ければ受信者）
+			if (nextID == null) {
+				//	System.out.println("I'm a actual receiver");
+
+				// 送信者側への処理のための情報を保存
+				IDAddressPair src = recvMsg.getSource();
+				MessagingAddress org = getNeighberAddress(src.getID());
+				RelayProcessSet toSenderSide = new RelayProcessSet(org, secKey, decHeader, C.ENCRYPT);
+				relayProcessMap.put(nextHeader, toSenderSide);
+
+				// 復号するための情報を保存
+				RelayProcessSet toReceiverSide = new RelayProcessSet(null, secKey, nextHeader, C.DECRYPT);
+				relayProcessMap.put(encHeader, toReceiverSide);
+
+				return;
+			}
+
+			Message sendMsg = DHTMessageFactory.getConstructMessage(getSelfIDAddressPair(), nextHeader);
+			MessagingAddress dest = getNeighberAddress(nextID);
+			sender.send(dest, sendMsg);
+
+			// 匿名通信を行う際の処理情報を保存
+			IDAddressPair src = recvMsg.getSource();
+			MessagingAddress org = getNeighberAddress(src.getID());
+
+			// 送信者側への処理のための情報を保存
+			RelayProcessSet toSenderSide = new RelayProcessSet(org, secKey, encHeader, C.ENCRYPT);
+			relayProcessMap.put(nextHeader, toSenderSide);
+
+			// 受信者側への処理のための情報を保存
+			RelayProcessSet toReceiverSide = new RelayProcessSet(dest, secKey, nextHeader, C.DECRYPT);
+			relayProcessMap.put(encHeader, toReceiverSide);
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 }

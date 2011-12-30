@@ -43,12 +43,16 @@ public class C
 	 * ・構築メッセージ
 	 * ・修復メッセージ
 	 * ・通信メッセージ
-	 * ・通信方法変更メッセージ //廣瀬が追加 11/27
+	 * ・通信方法変更メッセージ 拒否用 //廣瀬が追加 11/27
+	 * ・通信方法変更メッセージ 暗号処理なし用
+	 * ・了承通知用のメッセージ
 	 */
 	public static final int TYPE_CONSTRUCTION = 0;
 	public static final int TYPE_REPAIR = 1;
 	public static final int TYPE_COMMUNICATION = 2;
-	public static final int TYPE_COMMUNICATION_CHANGE = 3;//廣瀬が追加 11/27
+	public static final int TYPE_COMMUNICATION_REJECT = 3;//廣瀬が追加 11/27
+	public static final int TYPE_COMMUNICATION_RELAY = 4;
+	public static final int TYPE_CHANGE_APPROVE = 5; //了承通知用のフラグ
 
 	/*
 	 * 匿名通信、または匿名路修復の際に利用
