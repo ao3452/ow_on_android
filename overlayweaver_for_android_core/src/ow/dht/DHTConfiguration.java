@@ -376,4 +376,11 @@ public class DHTConfiguration {
 		return old;
 	}
 	
+	//構築中の匿名路の数を記憶する変数
+	private int constructNumber = 0;
+	public int getConstructNumber(){ return constructNumber; }
+	public int incrementConstructNumber(){ return constructNumber++; }
+	public int decrementConstructNumber(){ return constructNumber--; }
+	
+	
 }

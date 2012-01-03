@@ -1390,6 +1390,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			case Permit : // 通常の中継
 				ordinaryCommunicateMessage(msg);
 				break;
+				
 			case Relay : // 中継のみ許可
 				//変更通知を作成しているかを確認
 				if(!(config.checkCommFlag())){
@@ -1404,12 +1405,26 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 					//受信していたら識別タグを読み取り次のノードへ送信
 					
 					//受信していないなら通常通りの中継
-					
+					ordinaryCommunicateMessage(msg);
 				}
+				break;
 				
 			case Reject : // 中継拒否
-				//通信途中で拒否する場合の処理を書く
-				communicateChange(msg,flag);
+				//変更通知を作成しているかを確認
+				if(!(config.checkCommFlag())){
+					//変更通知作成して通常通りの中継も行う
+					communicateChange(msg,flag);
+					
+					ordinaryCommunicateMessage(msg);
+					
+				}else{
+					//了承通知を受信しているかを確認
+					
+					//受信していたらconstructNumberを減らす
+					config.decrementConstructNumber();
+					//受信していないなら通常通りの中継
+					ordinaryCommunicateMessage(msg);
+				}
 				break;
 			}
 
