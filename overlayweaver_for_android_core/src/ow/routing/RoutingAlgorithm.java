@@ -170,6 +170,9 @@ public interface RoutingAlgorithm {
 	 * Successorlistを返す(受信エリアのため)
 	 */
 	IDAddressPair[] getSuccessorlist();
+
+	//廣瀬が追加
+	IDAddressPair[] getRoutingTable();
 	
 	
 }

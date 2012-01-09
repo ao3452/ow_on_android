@@ -11,6 +11,7 @@ import ow.messaging.MessagingAddress;
  * ・共通鍵				: SecretKey key
  * ・次ノードに送る情報	: byte[] sendHeader
  * ・暗号化か復号か		: int decOrEnc
+ * ・構築中の匿名路番号 : int number  // 1/3 廣瀬が追加
  * 上記の4つの組み合わせをバリューとして保存する
  * このクラスではバリューとなるセットをセットとして保持する。
  * 
@@ -35,12 +36,14 @@ public class RelayProcessSet {
 	private SecretKey key;
 	private byte[] primalKey;
 	private int decOrEnc;
+	private int number;
 	
-	public RelayProcessSet(MessagingAddress dest, SecretKey key, byte[] sendHeader, int decOrEnc){
+	public RelayProcessSet(MessagingAddress dest, SecretKey key, byte[] sendHeader, int decOrEnc , int number){
 		this.dest = dest;
 		this.key = key;
 		this.primalKey = sendHeader;
 		this.decOrEnc = decOrEnc;
+		this.number = number;
 	}
 	
 	public MessagingAddress getDestMessagingAddress(){
@@ -57,5 +60,9 @@ public class RelayProcessSet {
 	
 	public int getDecOrEnc(){
 		return this.decOrEnc;
+	}
+	
+	public int getNumber(){
+		return this.number;
 	}
 }

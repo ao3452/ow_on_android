@@ -107,9 +107,9 @@ public class DHTMessageFactory {
 	 * @param hashValue
 	 * @return
 	 */
-	public static Message getCommunicateMessage(IDAddressPair src, byte[] body, byte[] primeKey){
+	public static Message getCommunicateMessage(IDAddressPair src, byte[] body, byte[] primeKey,int distinctionTag){
 		int tag = Tag.RELAY.getNumber();
-		return new Message(src, tag, null, (Serializable) body, primeKey, C.TYPE_COMMUNICATION);
+		return new Message(src, tag, null, (Serializable) body, primeKey, C.TYPE_COMMUNICATION,distinctionTag);
 	}
 	
 	/**

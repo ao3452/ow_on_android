@@ -783,4 +783,10 @@ public final class Pastry extends Plaxton {
 		// TODO 自動生成されたメソッド・スタブ
 		return null;
 	}
+
+	@Override
+	public IDAddressPair[] getRoutingTable() {
+		// TODO 自動生成されたメソッド・スタブ
+		return null;
+	}
 }

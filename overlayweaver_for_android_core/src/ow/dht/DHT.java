@@ -335,4 +335,8 @@ public interface DHT<V extends Serializable> {
 	 */
 	public boolean containsRoute(ID targetID);
 
+	public IDAddressPair[] getRoutingTable();
+
+	public IDAddressPair[] getSuccessorlist();
+
 }

@@ -7,6 +7,5 @@
 <string name="ValueText">Value</string>
 <string name="PutButton">put</string>
 <string name="GetButton">get</string>
-<string name="GetMessage">Keyを入れて、\n[get]ボタンを押してください。\nputしたKey/Valueの Key を\n入れると、P2P上に配置された\nValueを取得することが出来ます。</string>
 <string name="LOGMessage">ここに、操作ログが表示されます。\n</string>
 </resources>

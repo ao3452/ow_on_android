@@ -31,7 +31,12 @@ public class AnonymousRouteInfo {
 	 * 隣接する送信先ノード（本質的な送信先では無い＝中継ノード）へ送る主キーのバイト列
 	 */
 	private byte[] primaryKey = null;
-
+	
+	/*
+	 * 送信者の匿名路構築情報を知るための変数。どれだけ匿名路を構築しているかを保存 中継している数も含まれる
+	 */
+	private int constructNumber = 0;
+	
 	// 暗号化の方式（要らないかもしれん）
 	public static final String DES_ALGORITHM = "DES";
 	public static final String DESEDE_ALGORITHM = "DESede";
@@ -60,7 +65,7 @@ public class AnonymousRouteInfo {
 		try {
 			this.keysForAnonymity = new ArrayList<SecretKey>();
 			this.relayInfo = new ArrayList<LocalRouteInfo>();
-
+			this.constructNumber = config.getConstructNumber();
 			KeyGenerator kg;
 			kg = KeyGenerator.getInstance(DEFAULT_ALGORITHM);
 			kg.init(128);
@@ -293,5 +298,14 @@ public class AnonymousRouteInfo {
 	 */
 	public byte[] getPrimaryKey() {
 		return this.primaryKey;
+	}
+	
+	/**
+	 * 現在構築中の匿名路の数を取得するための関数
+	 * 
+	 * @return
+	 */
+	public int getConstructNumber(){
+		return this.constructNumber;
 	}
 }

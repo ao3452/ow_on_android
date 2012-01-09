@@ -17,8 +17,13 @@
 
 package ow.dht;
 
+import java.util.ArrayList;
+
+import javax.crypto.SecretKey;
+
 import ow.id.ID;
 import ow.id.IDAddressPair;
+import ow.messaging.MessagingAddress;
 
 public class DHTConfiguration {
 	public final static String DEFAULT_IMPL_NAME = "ChurnTolerantDHT";
@@ -323,64 +328,151 @@ public class DHTConfiguration {
 	//    以下廣瀬が追加
 	////////////////////////////////////////////////////////
 	
-	//    通信方法変更用のフラグ管理
-	public enum commFlag{
-		Permit,//通常通信
-		Relay,//中継のみ許可
-		Reject//通信拒否
-	}
-	private commFlag communicateMethodFlag=commFlag.Permit;
-	public commFlag getCommunicateMethodFlag(){ return this.communicateMethodFlag; }
-	public commFlag setCommunicateMethodFlag(commFlag newFlag){
-		commFlag old = this.communicateMethodFlag;
-		this.communicateMethodFlag = newFlag;
-		return old;
-	}
-	
-	//変更通知用のフラグ
-	private commFlag oldCommFlag=commFlag.Permit;
-	public void setOldCommFlag(){ oldCommFlag=communicateMethodFlag;	}
-	public boolean checkCommFlag(){
-		if(this.communicateMethodFlag==oldCommFlag){
-			return true;
-		}
-		return false;
-	}
-	
 	//中継拒否リスト用変数
 	public final int REJECT_NODE_NUMBER = 10;
 	private int rejectNodeNumber = 0;
-	private ID rejectID[] = new ID[REJECT_NODE_NUMBER];
+	private ArrayList<ID> rejectID = new ArrayList<ID>();
+//	private ID rejectID[] = new ID[REJECT_NODE_NUMBER];
 	public int getRejectNodeNumber(){ return rejectNodeNumber; }
 	public void setRejectID(ID newID){
-		rejectID[rejectNodeNumber++] = newID;
+		rejectID.set(rejectNodeNumber++, newID);	
 		//設定以上のリスト登録があった場合、リストの上書きを始める
 		if(REJECT_NODE_NUMBER==rejectNodeNumber){
 			rejectNodeNumber=0;
 		}
 	}
 	public boolean checkRejectNode(ID checkID){
-		for(int i = 0 ; i < rejectNodeNumber ; i++){
-			if(rejectID[i].equals(checkID))
-				return true;
+		if(!(rejectID.indexOf(checkID)==-1))	
+			return true;
+		
+		return false;
+	}
+	
+	//    通信方法変更用のフラグ管理
+	public enum commFlag{
+		Permit,//通常通信
+		Relay,//中継のみ許可
+		Reject//通信拒否
+	}
+	private ArrayList<commFlag> communicateMethodFlag = new ArrayList<commFlag>();
+	//private commFlag communicateMethodFlag[] = new commFlag[REJECT_NODE_NUMBER];
+	//=commFlag.Permit;
+	public commFlag getCommunicateMethodFlag(int number){ return communicateMethodFlag.get(number); }
+	public commFlag setCommunicateMethodFlag(commFlag newFlag,int number){
+		commFlag old = communicateMethodFlag.get(number);
+		communicateMethodFlag.set(number, newFlag);
+		return old;
+	}
+	
+	//変更通知用のフラグ
+	private ArrayList<commFlag> oldCommFlag = new ArrayList<commFlag>();
+	//private commFlag oldCommFlag[] = new commFlag[REJECT_NODE_NUMBER];
+	//=commFlag.Permit;
+	public void setOldCommFlag(int number){ oldCommFlag.set(number, communicateMethodFlag.get(number));	}
+	public boolean checkCommFlag(int number){
+		if(communicateMethodFlag.get(number) == oldCommFlag.get(number)){
+			return true;
 		}
 		return false;
 	}
 	
 	//了承通知用のフラグ管理
-	private boolean approvalChangeFlag = false;
-	public boolean getApprovalChangeFlag(){ return approvalChangeFlag; }
-	public boolean setApprovalChangeFlag(boolean newFlag){
-		boolean old = this.approvalChangeFlag;
-		this.approvalChangeFlag = newFlag;
+	private ArrayList<Boolean> approvalChangeFlag = new ArrayList<Boolean>();
+	//private boolean approvalChangeFlag[] = new boolean[REJECT_NODE_NUMBER];
+	public boolean getApprovalChangeFlag(int number){ return approvalChangeFlag.get(number); }
+	public boolean setApprovalChangeFlag(boolean newFlag,int number){
+		boolean old = approvalChangeFlag.get(number);
+		approvalChangeFlag.set(number, newFlag);
 		return old;
 	}
 	
 	//構築中の匿名路の数を記憶する変数
 	private int constructNumber = 0;
 	public int getConstructNumber(){ return constructNumber; }
-	public int incrementConstructNumber(){ return constructNumber++; }
-	public int decrementConstructNumber(){ return constructNumber--; }
+	public int incrementConstructNumber(){
+		if(constructNumber == REJECT_NODE_NUMBER){
+			constructNumber = 0;
+			return constructNumber;
+		}else
+		return constructNumber++;
+	}
+	public int decrementConstructNumber(){
+		if(constructNumber <= 0){
+			constructNumber = 0;
+			return constructNumber;
+		}else
+			return constructNumber--; 
+	}
 	
+	//中継のみのノード用の変数
+	private ArrayList<RelaySendNode> relaySendNodes = new ArrayList<RelaySendNode>();
+	private ArrayList<RelayChangeNode> relayChangeNodes = new ArrayList<RelayChangeNode>();
+	//中継のみのノードを保存しておくクラス(別途ファイルを作った方がいいかもしれない)というかMap使った方が楽?
+	//送信者用
+	public class RelaySendNode{
+		private ArrayList<SecretKey> relayKey= new ArrayList<SecretKey>();
+		private ArrayList<Integer> relayTag = new ArrayList<Integer>();
+		
+		public void setRelayList(SecretKey setKey,int setTag){
+			relayKey.add(setKey);
+			relayTag.add(setTag);
+		}
+		
+		public Integer getRelayTag(SecretKey setKey){
+			return relayTag.get(relayKey.indexOf(setKey));
+		}
+		
+	}
+	public void setRelaySendNode(int number,SecretKey setKey, int setTag){
+		relaySendNodes.get(number).setRelayList(setKey, setTag);
+	}
+	public Integer getRelayTag(int number,SecretKey setKey){
+		RelaySendNode tmpRelayKey = relaySendNodes.get(number);
+		return tmpRelayKey.getRelayTag(setKey);
+	}
+	public boolean checkRelayID(int number, SecretKey checkKey){
+		RelaySendNode tmpRelayKey = relaySendNodes.get(number);
+		for(SecretKey keyCheker : tmpRelayKey.relayKey){
+			if(checkKey==keyCheker)
+				return true;
+		}
+		return false;
+	}
 	
+	//変更ノード用
+	public class RelayChangeNode{
+		private MessagingAddress org; //往路用
+		private MessagingAddress dest; //復路用
+		
+		public void setRelayChangeNode(MessagingAddress org,MessagingAddress dest){
+			this.org = org;
+			this.dest = dest;
+		}
+		
+		public MessagingAddress getRelayOrgAddress(){
+			return this.org;
+		}
+		
+		public MessagingAddress getRelayDestAddress(){
+			return this.dest;
+		}
+	}
+	public void setRelayChangeNode(int number,MessagingAddress org,MessagingAddress dest){
+		relayChangeNodes.get(number).setRelayChangeNode(org, dest);
+	}
+	public MessagingAddress getRelayOrgAddress(int number){
+		return relayChangeNodes.get(number).getRelayOrgAddress();
+	}
+	public MessagingAddress getRelayDestAddress(int number){
+		return relayChangeNodes.get(number).getRelayDestAddress();
+	}
+	public MessagingAddress getNextNodeAddress(int number,MessagingAddress tmp){
+		RelayChangeNode tmpRelayNode = relayChangeNodes.get(number);
+		if(tmpRelayNode.getRelayOrgAddress()==tmp){
+			return tmpRelayNode.getRelayDestAddress();
+		}else{
+			return tmpRelayNode.getRelayOrgAddress();
+		}
+	}
 }
+

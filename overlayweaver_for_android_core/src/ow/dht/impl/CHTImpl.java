@@ -416,6 +416,18 @@ public final class CHTImpl<V extends Serializable> implements DHT<V> {
 		// TODO Auto-generated method stub
 		
 	}
+
+	@Override
+	public IDAddressPair[] getRoutingTable() {
+		// TODO 自動生成されたメソッド・スタブ
+		return null;
+	}
+
+	@Override
+	public IDAddressPair[] getSuccessorlist() {
+		// TODO 自動生成されたメソッド・スタブ
+		return null;
+	}
 	
 
 }

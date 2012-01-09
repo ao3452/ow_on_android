@@ -210,4 +210,15 @@ public abstract class AbstractChord extends LinearWalker {
 			return repMsg;
 		}
 	}
+	
+	//廣瀬が追加 android用 fingertable取得用の関数
+	public IDAddressPair[] getRoutingTable() {
+
+//		IDAddressPair[] entry = null;
+//		for (int i = 1; i <= this.idSizeInBit; i++) {
+//			entry[i] = this.fingerTable.get(i);
+//		}
+
+		return super.getRoutingTable();
+	}
 }

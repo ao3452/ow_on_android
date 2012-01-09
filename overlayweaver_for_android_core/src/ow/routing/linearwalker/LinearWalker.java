@@ -542,4 +542,10 @@ for (IDAddressPair n: neighbors) {
 		// TODO 自動生成されたメソッド・スタブ
 		return this.successorList.toArray();
 	}
+
+	@Override
+	public IDAddressPair[] getRoutingTable() {
+		// TODO 自動生成されたメソッド・スタブ
+		return this.successorList.toArray();
+	}
 }

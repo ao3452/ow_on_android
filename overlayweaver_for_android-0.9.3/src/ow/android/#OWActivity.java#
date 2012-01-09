@@ -6,7 +6,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OptionalDataException;
 import java.io.OutputStream;
-import java.io.RandomAccessFile;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.Socket;
@@ -95,7 +94,7 @@ public class OWActivity extends Activity {
 				dht.put(ID.getSHA1BasedID(key.getBytes()), new MessageObject(value));
 				logView.append("PUT command : Key=" + key + "  Value=" + value + "\n");
 			} catch (Exception e) {
-				logView.append("PUT command : Key=" + key + "  Value=" + value + " のPUTに失敗しました。\n");
+				logView.append("PUT command : Key=" + key + "  Value=" + value + "  ��UT��け����障����\n");
 
 			}
 		}
@@ -113,8 +112,9 @@ public class OWActivity extends Activity {
 					logView.append("GET command : Key=" + key + "  Value=" + mo.getValue().getFirst() + "\n");
 				}
 			} catch (RoutingException e) {
-				logView.append("GET command : Key=" + key + " のGETに失敗しました。\n");
+				logView.append("GET command : Key=" + key + " ��et��け����障����\n");
 			}
+
 
 		}
 
@@ -140,8 +140,7 @@ public class OWActivity extends Activity {
 		@Override
 		public void onClick(View v) {
 
-			//double dw =cpuUsed();
-			float dw = readUsage();
+			double dw =cpuUsed();
 			txt1.setText(dw+"%");
 		}
 
@@ -178,7 +177,7 @@ public class OWActivity extends Activity {
 				level = intent.getIntExtra("level", 0);
 			}
 
-			//CPU使用率表示用
+			//腟������
 			txt3 = (TextView) findViewById(R.id.txt3);
 			txt3.setText(((float)level/(float)scale * 100)+" (%)");
 
@@ -204,8 +203,7 @@ public class OWActivity extends Activity {
        txt4 = (TextView) findViewById(R.id.txt4);
        mUpdateCpu = new Runnable() {
     	   public void run() {
-    		//   float dw =cpuUsed();
-    		   float dw = readUsage();
+    		   float dw =cpuUsed();
     		   txt1.setText(dw+"%");
     		   mHandler.removeCallbacks(mUpdateCpu);
     		   mHandler.postDelayed(mUpdateCpu, 10000);
@@ -242,13 +240,13 @@ public class OWActivity extends Activity {
 	    	oldTime=(int) System.currentTimeMillis();
 	    	oldUse=checkCpuUse();
 //	    	logView.append(oldTime+" "+oldUse+"\n");
-			// アドレスの取得
+			// �≪��������
 			//InetAddress ipAddr = getLocalAddress();
 			//InetAddress ipAddr = getIpAddress();
 			InetAddress ipAddr = getWifiAddress();
 			Log.d("DHT", ipAddr.getHostAddress());
 			//logView.append("1 \n");
-			// コンフィグ設定。変える場合は、自分でブートストラップを用意してください。
+			// �潟�����域┃絎��紊����������������������������������������
 			dhtConfig = DHTFactory.getDefaultConfiguration();
 			dhtConfig.setImplementationName("ChurnTolerantDHT");
 			dhtConfig.setMessagingTransport("TCP");
@@ -435,7 +433,7 @@ public class OWActivity extends Activity {
 				ip = InetAddress.getByAddress(byteIPAddress);
 				logView.append(ip+"\n");
 			} catch (UnknownHostException e) {
-				// TODO 自動生成されたcatchブロック
+				// TODO �����������catch ������
 				e.printStackTrace();
 			}
 		}
@@ -445,7 +443,7 @@ public class OWActivity extends Activity {
 				ip = InetAddress.getByAddress(byteIPAddress);
 				logView.append(ip+"\n");
 			} catch (UnknownHostException e) {
-				// TODO 自動生成されたcatchブロック
+				// TODO �����������catch ������
 				e.printStackTrace();
 			}
 		}
@@ -499,7 +497,7 @@ public class OWActivity extends Activity {
 						logView.append(ip+"\n");
 						ipAddr=ip;
 					} catch (UnknownHostException e) {
-						// TODO 自動生成されたcatchブロック
+						// TODO �����������catch ������
 						e.printStackTrace();
 					}
 				}
@@ -510,8 +508,8 @@ public class OWActivity extends Activity {
     private ProcessBuilder cmd=null;
     //cpu篏睡����茯帥���
     private Integer checkCpuUse(){
+    	// �����������輝荐���宴�茵�ず���
 
-    	// カーネル全体の統計情報を表示する
     	String [] cmdArgs = {"/system/bin/cat","/proc/stat"};
 
     	String cpuLine    = "";
@@ -524,9 +522,9 @@ public class OWActivity extends Activity {
 
     	InputStream in  = process.getInputStream();
 
-    	// 統計情報より1024バイト分を読み込む
-    	// cpu user/nice/system/idle/iowait/irq/softirq/steal/の情報を取得する
-    	
+    	// 腟沿�������1024����������粋昭��
+    	// cpu user/nice/system/idle/iowait/irq/softirq/steal/����宴�������
+
     	byte[] lineBytes = new byte[1024];
 
     	while(in.read(lineBytes) != -1 ) {
@@ -542,7 +540,7 @@ public class OWActivity extends Activity {
 
     	cpuLine = cpuBuffer.toString();
 
-    	// 1024バイトより「cpu～cpu0」までの文字列を抽出
+    	// 1024���������cpu鐔�pu0����с��������遵�
     	int start = cpuLine.indexOf("cpu");
     	int end = cpuLine.indexOf("cpu0");
     	cpuLine = cpuLine.substring(start, end);
@@ -563,36 +561,11 @@ public class OWActivity extends Activity {
     private float cpuUsed(){
       	 int nowTime=(int) System.currentTimeMillis();
       	 int nowUse=checkCpuUse();
-      // CPU使用率の計算
+      // CPU������膊��
      	float wd = ( (float)( nowUse - oldUse ) /(float) (( nowTime - oldTime )/10));
      	oldTime=nowTime;
      	oldUse=nowUse;
      	return wd;
-    }
-    
-    private float readUsage() {
-        try {
-            RandomAccessFile reader = new RandomAccessFile("/proc/stat", "r");
-            String load = reader.readLine();
-            String[] toks = load.split(" ");
-            long idle1 = Long.parseLong(toks[5]);
-            long cpu1 = Long.parseLong(toks[2]) + Long.parseLong(toks[3]) + Long.parseLong(toks[4])
-                  + Long.parseLong(toks[6]) + Long.parseLong(toks[7]) + Long.parseLong(toks[8]);
-            try {
-                Thread.sleep(360);
-            } catch (Exception e) {}
-            reader.seek(0);
-            load = reader.readLine();
-            reader.close();
-            toks = load.split(" ");
-            long idle2 = Long.parseLong(toks[5]);
-            long cpu2 = Long.parseLong(toks[2]) + Long.parseLong(toks[3]) + Long.parseLong(toks[4])
-                + Long.parseLong(toks[6]) + Long.parseLong(toks[7]) + Long.parseLong(toks[8]);
-            return (float)(cpu2 - cpu1) / ((cpu2 + idle2) - (cpu1 + idle1));
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-        return 0;
     }
 
 

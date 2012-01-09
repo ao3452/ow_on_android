@@ -36,7 +36,8 @@ public class C
 	public static final int MESSAGE_BODY = 1;
 	public static final int MESSAGE_PRIMALKEY = 2;
 	public static final int MESSAGE_TYPE = 3;
-	public static final int MESSAGE_SIZE = 4;
+	public static final int MESSAGE_DISTINCTION_TAG = 4; //廣瀬が追加 識別タグ用
+	public static final int MESSAGE_SIZE = 5;
 
 	/*
 	 * 匿名通信で用いられるメッセージの種類
@@ -69,7 +70,7 @@ public class C
 	//public static final String KEY_SERVER = "/home/nitech_bifrost1/Bifrost_Original2/bin/KeyServer4/";
 	//public static final String KEY_SERVER = "/home/21417/cig17582/Bifrost_Original2/bin/KeyServer4/";
 	//public static final String KEY_SERVER = "/home/hirose/Bifrost_Original2/KeyServer4/";
-	public static final String KEY_SERVER = "/data/data/ow.android/KeyServer4/";
+	public static final String KEY_SERVER = "/data/local/KeyServer4/";
 
 	public static final String TEST_SERVICE_NAME = "TestService001";
 	public static final int SENDER_KEY = 0;
