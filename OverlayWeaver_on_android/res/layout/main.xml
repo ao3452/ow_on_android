@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    >
+    <ViewFlipper android:id="@+id/flipper"
+   android:layout_width="fill_parent" android:layout_height="fill_parent">
+   <include android:id="@+id/damylayout" layout="@layout/damy" />
+    <include android:id="@+id/getlayout" layout="@layout/get" />
+      <include android:id="@+id/putlayout" layout="@layout/put" />
+        <include android:id="@+id/statuslayout" layout="@layout/status" />
+        <include android:id="@+id/constructlayout" layout="@layout/construct" />
+        <include android:id="@+id/relaylayout" layout="@layout/relay" />
+</ViewFlipper>
+
+</LinearLayout>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:orientation="vertical"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent">
+    <Spinner
+    	android:id="@+id/spinner"
+    	android:layout_width="wrap_content"
+    	android:layout_height="wrap_content"
+    	android:drawSelectorOnTop="true"/>
+    <TextView  
+        android:id="@+id/txt1"
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" 
+        android:text=""/>
+    <Button 
+        android:layout_width="wrap_content" 
+        android:id="@+id/cpu_button" 
+        android:layout_height="wrap_content" 
+        android:layout_toRightOf="@+id/txt1" 
+        android:text="get CPU"/>
+    <TextView  
+        android:id="@+id/txt2"
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" 
+        android:text="電池残料"/>
+    <TextView  
+        android:id="@+id/txt3"
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" 
+        android:layout_toRightOf="@+id/txt2" 
+        android:text=""/>
+    <TextView  
+        android:id="@+id/txt4"
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" 
+        android:text=""/>
+	<EditText
+        android:id="@+id/log_view"
+        android:textSize="10px"
+        android:text="@string/LOGMessage" 
+        android:layout_height="fill_parent"
+        android:layout_width="fill_parent"
+        android:layout_marginTop="5px"
+        android:scrollbars="horizontal|vertical" android:gravity="top|left" android:editable="true" android:autoText="true"/>
+
+</LinearLayout>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:orientation="vertical"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent">
+      <TextView  
+        android:id="@+id/txt_constructNumber"
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" 
+        android:text="現在の匿名路構築数"/> 
+     <TextView  
+        android:id="@+id/txt5"
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" 
+        android:text=""/>
+     <TextView  
+        android:id="@+id/txt_changeConstructNumber"
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" 
+        android:text="変更したい匿名路の番号を指定してください"/>
+      <EditText
+			android:id="@+id/get_changeConstructNumber"
+			android:layout_height="wrap_content"
+			android:singleLine="true" 
+			android:layout_toRightOf="@+id/txt_changeConstructNumber" 
+			android:layout_width="wrap_content"/>
+        
+   	 <RadioGroup android:id="@+id/radiogroup"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content">
+        <RadioButton android:id="@+id/radiobutton_permit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="通常通りの中継" />
+        <RadioButton android:id="@+id/radiobutton_relay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="暗号処理を行わない中継" />
+        <RadioButton android:id="@+id/radiobutton_reject"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="中継を拒否" />
+     </RadioGroup>
+   
+  	 <Button android:id="@+id/relay_change"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="relay change" />
+		
+  	 <Button android:id="@+id/relay_finish"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="relay finish" />
+</LinearLayout>
