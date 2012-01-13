@@ -8,12 +8,9 @@ import java.io.OptionalDataException;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.net.InetAddress;
-import java.net.NetworkInterface;
 import java.net.Socket;
-import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.Enumeration;
-import java.util.List;
+import java.util.ArrayList;
 import java.util.Set;
 
 import ow.MessageObject;
@@ -30,12 +27,10 @@ import ow.routing.RoutingHop;
 import ow.routing.RoutingResult;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.wifi.WifiInfo;
@@ -44,8 +39,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
@@ -59,7 +52,6 @@ import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.AdapterView.OnItemSelectedListener;
-import android.widget.Toast;
 import android.widget.ViewFlipper;
 
 public class OverlayWeaver_on_androidActivity extends Activity 
@@ -77,17 +69,20 @@ public class OverlayWeaver_on_androidActivity extends Activity
 	private DHT<MessageObject> dht = null;
 	private DHTConfiguration dhtConfig = null;
 	
-	private commFlag setCommFlag = null;
+	private commFlag setCommFlag = commFlag.Permit;
 	private int changeConstructNumber = 0; 
 	private ID constructTargetID = null;
+	private ArrayList<ID> constructNodeID = new ArrayList<ID>();
 	
     private Handler mainHandler = new MainHandler();
     private Handler mHandler = new Handler();
     private Handler constructHandler = new Handler();
     private Handler constructChooseHandler = new Handler();
+    private Handler communicateHandler = new Handler();
     private Runnable mUpdateCpu;
     private Runnable mUpdateConstructNumber;
     private Runnable mUpdateConstructChoose;
+    private Runnable mUpdateConstructNode;
 	
 	private ViewFlipper viewflipper;
 	
@@ -96,16 +91,21 @@ public class OverlayWeaver_on_androidActivity extends Activity
 	private Button statusFinishButton = null;
 	private Button relayFinishButton = null;
 	private Button constructFinishButton = null;
+	private Button communicateFinishButton = null;
 	private Button putButton = null;
 	private Button getButton = null;
 	private Button getCpuButton = null;
 	private Button statusButton = null;
 	private Button relayChangeButton = null;
 	private Button constructButton = null;
+	private Button logButton = null;
+	private Button resetButton = null;
+	private Button communicateButton = null;
 	
 	private RadioButton radioButton = null;
 	private RadioGroup radioGroup = null;
 	
+	private TextView idAddress = null;
 	private TextView txt1 = null;
 	private TextView txt3 = null;
 	private TextView txt4 = null;
@@ -115,7 +115,41 @@ public class OverlayWeaver_on_androidActivity extends Activity
 	private EditText putValue = null;
 	private EditText getKey = null;
 	private EditText relayChangeNumber = null;
-	private EditText logView = null;
+	private EditText communicateMessage = null;
+	public static EditText logView = null;
+	
+	private enum NodeID{
+		ONE("out-road0x01.ssn.nitech.ac.jp"),
+		TWO("out-road0x02.ssn.nitech.ac.jp"),
+		THREE("out-road0x03.ssn.nitech.ac.jp"),
+		FOUR("mat-asus.matlab.nitech.ac.jp"),
+		FIVE("syourin.matlab.nitech.ac.jp"),
+		SIX("mat-desire.matlab.nitech.ac.jp"),
+		NOT_NODE("");
+		
+		private final String name;
+		
+		private NodeID(String name){
+			this.name = name;
+		}
+		
+		@Override
+		public String toString(){
+			return name;
+		}
+		
+		public static NodeID toID(String name){
+			NodeID result = null;
+			
+			for(NodeID nodeID : values()){
+				if(nodeID.toString().equals(name)){
+					result = nodeID;
+					break;
+				}
+			}
+			return result != null ? result : NOT_NODE;
+		}
+	}
 	
 	private OnClickListener putListerner = new OnClickListener() {
 
@@ -178,7 +212,15 @@ public class OverlayWeaver_on_androidActivity extends Activity
 
 		@Override
 		public void onClick(View v) {
-			dht.construct(constructTargetID, 2);
+			logView.append("construct : "+constructTargetID+"\n");
+			if(dht.construct(constructTargetID, 2)){
+				logView.append("construct success");
+				constructNodeID.add(constructTargetID);
+				logView.append(dhtConfig.globalSb.toString());
+				dhtConfig.globalSb.setLength(0);
+			}
+			else
+				logView.append("construct failed");
 			viewflipper.setDisplayedChild(0);
 		}
 	};
@@ -187,13 +229,27 @@ public class OverlayWeaver_on_androidActivity extends Activity
 		public void onItemSelected(AdapterView<?> arg0, View arg1, int arg2,
 				long arg3) {
 			// TODO 自動生成されたメソッド・スタブ
-			constructTargetID=ID.getID(arg0.getSelectedItem().toString(), 20);
+			constructTargetID=tmpIDAddressPair[(int) arg0.getSelectedItemId()].getID();
+			//ID.getID(arg0.getSelectedItem().toString(), 20);
 		}
 
 		@Override
 		public void onNothingSelected(AdapterView<?> arg0) {
 			// TODO 自動生成されたメソッド・スタブ
 			
+		}
+	};
+	private OnClickListener communicateListerner = new OnClickListener() {
+
+		@Override
+		public void onClick(View v) {
+			try{
+				dht.communicate(constructTargetID, communicateMessage.getText().toString());
+				viewflipper.setDisplayedChild(0);
+			} catch(Exception e){
+				logView.append("error communicate\n");
+				viewflipper.setDisplayedChild(0);
+			}
 		}
 	};
 	
@@ -204,6 +260,19 @@ public class OverlayWeaver_on_androidActivity extends Activity
 			//double dw =cpuUsed();
 			float dw = readUsage();
 			txt1.setText(dw+"%");
+		}
+	};
+	private OnClickListener logListerner = new OnClickListener() {
+		@Override
+		public void onClick(View v) {
+			logView.append(dhtConfig.globalSb.toString());
+			dhtConfig.globalSb.setLength(0);
+		}
+	};
+	private OnClickListener resetListerner = new OnClickListener() {
+		@Override
+		public void onClick(View v) {
+			logView.setText("");
 		}
 	};
 	
@@ -251,11 +320,12 @@ public class OverlayWeaver_on_androidActivity extends Activity
 
 	private Spinner stateSpinner;
 	private Spinner constructSpinner;
+	private Spinner communicateSpinner;
 	private String[] constructStates;
+	private String[] communicateStates;
 	private String[] states;
 	private ArrayAdapter<String> adapter;
-	private ArrayAdapter<String> adapterConstruct;
-	
+	private IDAddressPair[] tmpIDAddressPair;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -268,17 +338,20 @@ public class OverlayWeaver_on_androidActivity extends Activity
 	    
 	    stateSpinner = (Spinner)findViewById(R.id.spinner);
 	    constructSpinner = (Spinner)findViewById(R.id.construct_spinner);
+	    communicateSpinner = (Spinner)findViewById(R.id.communicate_spinner);
 	    
 	    putFinishButton = (Button)findViewById(R.id.put_finish);
 	    getFinishButton = (Button)findViewById(R.id.get_finish);
 	    statusFinishButton = (Button)findViewById(R.id.status_finish);
 	    relayFinishButton = (Button)findViewById(R.id.relay_finish);
 	    constructFinishButton = (Button)findViewById(R.id.construct_finish);
+	    communicateFinishButton = (Button)findViewById(R.id.communicate_finish);
 	    putFinishButton.setOnClickListener(finishListerner);
 	    getFinishButton.setOnClickListener(finishListerner);
 	    statusFinishButton.setOnClickListener(finishListerner);
 	    relayFinishButton.setOnClickListener(finishListerner);
 	    constructFinishButton.setOnClickListener(finishListerner);
+	    communicateFinishButton.setOnClickListener(finishListerner);
 	    
 	    states = getResources().getStringArray(R.array.command_state);
 
@@ -293,13 +366,16 @@ public class OverlayWeaver_on_androidActivity extends Activity
         putValue = (EditText)findViewById(R.id.put_value_edit_view);
         getKey = (EditText)findViewById(R.id.get_key_edit_view);
         relayChangeNumber = (EditText)findViewById(R.id.get_changeConstructNumber);
+        communicateMessage = (EditText)findViewById(R.id.get_communicateMessage);
         logView = (EditText)findViewById(R.id.log_view);
         
+        idAddress = (TextView)findViewById(R.id.id_address);
         txt1 = (TextView) findViewById(R.id.txt1);
         txt4 = (TextView) findViewById(R.id.txt4);
         //CPU自動更新用
         mUpdateCpu = new Runnable() {
-     	   public void run() {
+     	   @Override
+		public void run() {
      		//   float dw =cpuUsed();
      		   float dw = readUsage();
      		   txt1.setText(dw+"%");
@@ -311,7 +387,8 @@ public class OverlayWeaver_on_androidActivity extends Activity
         txt5 = (TextView) findViewById(R.id.txt5);
         //匿名路構築数自動更新用
         mUpdateConstructNumber = new Runnable() {
-        	public void run() {
+        	@Override
+			public void run() {
         		int constructNumber = dhtConfig.getConstructNumber();
         		txt5.setText(constructNumber + "個");
         		constructHandler.removeCallbacks(mUpdateConstructNumber);
@@ -322,25 +399,48 @@ public class OverlayWeaver_on_androidActivity extends Activity
         
         //表示用Fingertable自動更新用
         mUpdateConstructChoose = new Runnable() {
-        	public void run() {
-        		IDAddressPair[] tmpIDAddressPair= dht.getSuccessorlist();
+        	@Override
+			public void run() {
+        		tmpIDAddressPair= dht.getSuccessorlist();
         		int tmpIDlength = 0;
         		try{
         			tmpIDlength= tmpIDAddressPair.length;
         			constructStates = new String[tmpIDlength];
         			for(int i = 0;i<tmpIDlength;i++){
-        				constructStates[i]=tmpIDAddressPair[i].getID().toString();
+        				constructStates[i]=tmpIDAddressPair[i].getAddress().toString();
         			}
         			setSpinner(constructSpinner,constructStates);
         		} catch (NullPointerException e){
         			logView.append(tmpIDlength + "\n");
         		}
  
-        		constructHandler.removeCallbacks(mUpdateConstructChoose);
-        		constructHandler.postDelayed(mUpdateConstructChoose, 10000);
+        		constructChooseHandler.removeCallbacks(mUpdateConstructChoose);
+        		constructChooseHandler.postDelayed(mUpdateConstructChoose, 10000);
         	}
         };
-        constructHandler.postDelayed(mUpdateConstructChoose, 5000);
+        constructChooseHandler.postDelayed(mUpdateConstructChoose, 5000);
+        
+        //表示用communicate自動更新用
+        mUpdateConstructNode = new Runnable() {
+        	@Override
+			public void run() {
+        		int tmpIDlength = 0;
+        		try{
+        			tmpIDlength= constructNodeID.size();
+        			communicateStates = new String[tmpIDlength];
+        			for(int i = 0;i<tmpIDlength;i++){
+        				communicateStates[i]=constructNodeID.get(i).toString();
+        			}
+        			setSpinner(communicateSpinner,communicateStates);
+        		} catch (NullPointerException e){
+        			logView.append(tmpIDlength + "\n");
+        		}
+ 
+        		communicateHandler.removeCallbacks(mUpdateConstructNode);
+        		communicateHandler.postDelayed(mUpdateConstructNode, 10000);
+        	}
+        };
+        communicateHandler.postDelayed(mUpdateConstructNode, 5000);
         
         //中継方法変更用のラジオボタンの設定
         radioGroup = (RadioGroup)findViewById(R.id.radiogroup);
@@ -352,7 +452,8 @@ public class OverlayWeaver_on_androidActivity extends Activity
         radioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             // ラジオグループのチェック状態が変更された時に呼び出されます
             // チェック状態が変更されたラジオボタンのIDが渡されます
-            public void onCheckedChanged(RadioGroup group, int checkedId) { 
+            @Override
+			public void onCheckedChanged(RadioGroup group, int checkedId) { 
             	if(group == radioGroup){
             		switch(checkedId){
             		case R.id.radiobutton_permit :
@@ -378,6 +479,9 @@ public class OverlayWeaver_on_androidActivity extends Activity
         statusButton = (Button)findViewById(R.id.status_get);
         relayChangeButton = (Button)findViewById(R.id.relay_change);
         constructButton = (Button)findViewById(R.id.construct);
+        logButton = (Button)findViewById(R.id.log_button);
+        resetButton = (Button)findViewById(R.id.reset_button);
+        communicateButton = (Button)findViewById(R.id.communicate_button);
         
         putButton.setOnClickListener(putListerner);
         getButton.setOnClickListener(getListerner);
@@ -385,6 +489,9 @@ public class OverlayWeaver_on_androidActivity extends Activity
         statusButton.setOnClickListener(statusListerner);
         relayChangeButton.setOnClickListener(relayChangeListerner);
         constructButton.setOnClickListener(constructListerner);
+        logButton.setOnClickListener(logListerner);
+        resetButton.setOnClickListener(resetListerner);
+        communicateButton.setOnClickListener(communicateListerner);
         
     	stateSpinner.setAdapter(adapter);
     	stateSpinner.setOnItemSelectedListener(this);
@@ -464,16 +571,42 @@ public class OverlayWeaver_on_androidActivity extends Activity
 			  dhtConfig.setSelfPort(hostAndPort.getPort());
 			  //logView.append(hostAndPort.getPort()+"4 \n");
 			  
-			  dht = DHTFactory.getDHT(APPLICATION_ID, APPLICATION_VERSION, dhtConfig, null);
+			  ID selfID;
 			  
-			  logView.append(ipAddr+"\n");
+			  switch(NodeID.toID(ipAddr.getHostName())){
+			  case ONE :
+				  selfID= ID.getID("0000000000000000000000000000000000000000", 20);
+				  break;
+			  case TWO :
+				  selfID= ID.getID("8000000000000000000000000000000000000000", 20);
+				  break;
+			  case THREE :
+				  selfID= ID.getID("4000000000000000000000000000000000000000", 20);
+				  break;
+			  case FOUR :
+				  selfID= ID.getID("c000000000000000000000000000000000000000", 20);
+				  break;
+			  case FIVE :
+				  selfID= ID.getID("2000000000000000000000000000000000000000", 20);
+				  break;
+			  case SIX :
+				  selfID= ID.getID("a000000000000000000000000000000000000000", 20);
+				  break;
+			  default :
+				  selfID=null;
+			  }
+			  
+			  dhtConfig.setMyID(selfID);
+			  dht = DHTFactory.getDHT(APPLICATION_ID, APPLICATION_VERSION, dhtConfig, selfID);
+			  
+			  idAddress.setText(ipAddr.getHostName() + " " + ipAddr.getHostAddress());
 			  InetAddress bsIP = getBootstrapServer(ipAddr);
 			  if(bsIP == null) {
-				  logView.append("Only mode... \n"+ ipAddr + "\n" + ipAddr.getHostAddress() + " " +ipAddr.getHostName()+ "\n");
+				  logView.append("Only mode... \n");
+
 			  } else {
-				  logView.append(bsIP + "\n" + bsIP.getHostAddress() + " " +bsIP.getHostName()+ "\n");
 				  dht.joinOverlay(bsIP.getHostAddress(), OW_PORT);
-				  logView.append("end\n");
+				  logView.append("join end\n");
 			  }
 			  
 		  } catch (Exception e) {
@@ -540,15 +673,22 @@ public class OverlayWeaver_on_androidActivity extends Activity
 		  OutputStream out = null;
 		  try {
 			  //socket = new Socket();
+			 // logView.append("1");
 			  socket = new Socket(JoinHOST,OW_PORT);
 			  //socket.connect(iSock, 3000);
+			  //logView.append("2");
 			  out = socket.getOutputStream();
+			  //logView.append("3");
 			  ObjectOutputStream oout = new ObjectOutputStream(out);
+			  //logView.append("4");
 			  oout.writeObject(hostIP.getHostName());
+			  //logView.append("5");
 			  //oout.writeObject(hostIP.getHostAddress());
 			  //oout.writeObject("hakkoudasan.matlab.nitech.ac.jp");
 			  in = socket.getInputStream();
+			  //logView.append("6");
 			  ObjectInputStream oin = new ObjectInputStream(in);
+			  //logView.append("7");
 			  String bsIP = (String)oin.readObject();
 			  if(bsIP.equals(hostIP.getHostName())) {
 //				  if(bsIP.equals("10.192.41.113")) {
@@ -569,6 +709,8 @@ public class OverlayWeaver_on_androidActivity extends Activity
 			  e.printStackTrace();
 		  } catch (IOException e) {
 			  // TODO 自動生成された catch ブロック
+			  e.printStackTrace();
+		  } catch (Exception e) {
 			  e.printStackTrace();
 		  } finally {
 			  try {
@@ -599,8 +741,7 @@ public class OverlayWeaver_on_androidActivity extends Activity
 			  byte[] byteIPAddress =new byte[] {(byte)((ipAddress >> 0) & 0xFF),(byte)((ipAddress >> 8) & 0xFF),(byte)((ipAddress >> 16) & 0xFF),(byte)((ipAddress >> 24) & 0xFF)};
 			  try {
 				  ip = InetAddress.getByAddress(byteIPAddress);
-				  logView.append(ip+"\n");
-			  } catch (UnknownHostException e) {
+				  } catch (UnknownHostException e) {
 				  // TODO 自動生成されたcatchブロック
 				  e.printStackTrace();
 			  }
@@ -609,8 +750,7 @@ public class OverlayWeaver_on_androidActivity extends Activity
 			  byte[] byteIPAddress =new byte[] {(byte)40,(byte)15,(byte)68,(byte)133};
 			  try {
 				  ip = InetAddress.getByAddress(byteIPAddress);
-				  logView.append(ip+"\n");
-			  } catch (UnknownHostException e) {
+				  } catch (UnknownHostException e) {
 				  // TODO 自動生成されたcatchブロック
 				  e.printStackTrace();
 			  }

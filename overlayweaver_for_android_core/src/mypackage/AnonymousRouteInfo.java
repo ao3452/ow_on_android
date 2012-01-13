@@ -2,6 +2,7 @@ package mypackage;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -10,6 +11,7 @@ import edu.cityu.util.Point;
 
 import ow.dht.DHTConfiguration;
 import ow.id.ID;
+
 
 public class AnonymousRouteInfo {
 	/*
@@ -30,12 +32,14 @@ public class AnonymousRouteInfo {
 	/*
 	 * 隣接する送信先ノード（本質的な送信先では無い＝中継ノード）へ送る主キーのバイト列
 	 */
-	private byte[] primaryKey = null;
+	private Integer primaryKey = null;
 	
 	/*
 	 * 送信者の匿名路構築情報を知るための変数。どれだけ匿名路を構築しているかを保存 中継している数も含まれる
 	 */
 	private int constructNumber = 0;
+	
+	private DHTConfiguration config;
 	
 	// 暗号化の方式（要らないかもしれん）
 	public static final String DES_ALGORITHM = "DES";
@@ -66,6 +70,8 @@ public class AnonymousRouteInfo {
 			this.keysForAnonymity = new ArrayList<SecretKey>();
 			this.relayInfo = new ArrayList<LocalRouteInfo>();
 			this.constructNumber = config.getConstructNumber();
+			
+			this.config=config;
 			KeyGenerator kg;
 			kg = KeyGenerator.getInstance(DEFAULT_ALGORITHM);
 			kg.init(128);
@@ -94,7 +100,7 @@ public class AnonymousRouteInfo {
 				}				
 				
 				// 同じノードが連続することを回避
-				if (relayID.equals(nextID)) {
+				if (relayID.equals(nextID)||relayID.equals(config.getMyID())||relayID.equals(targetID)) {
 					i--;
 					continue;
 				}
@@ -106,6 +112,7 @@ public class AnonymousRouteInfo {
 		}
 		catch (NoSuchAlgorithmException e) {
 			// TODO Auto-generated catch block
+			config.globalSb.append("AnonymousRouteInfo error\n");
 			e.printStackTrace();
 		}
 	}
@@ -211,6 +218,7 @@ public class AnonymousRouteInfo {
 
 			// 中継者が受け取る情報を作成
 			nextID = receiverID;
+			config.globalSb.append("\nbyteHeader : "+byteHeader+"\nnextID : "+nextID+"\nnextHeader : "+nextHeader+"\n");
 			for (int index = this.relayInfo.size() - 1; index >= 0; index--) {
 				LocalRouteInfo localInfo = relayInfo.get(index);
 				secKey = localInfo.getSharedKey();
@@ -222,12 +230,13 @@ public class AnonymousRouteInfo {
 				// 中継者が復号できる形で暗号化
 				nextID = localInfo.getNodeID();
 				nextHeader = CipherTools.encryptByIBEPadding(byteHeader, nextID.toString(), masterKey);
+				config.globalSb.append("\nbyteHeader : "+byteHeader+"\nnextID : "+nextID+"\nnextHeader : "+nextHeader+"\n");
 			}
 			AnonymousMessage ret = new AnonymousMessage();
 			ret.setHeader(nextHeader);
 
 			// 主キーを保存
-			this.primaryKey = nextHeader;
+			this.primaryKey = Arrays.hashCode(nextHeader);
 
 			return ret;
 		}
@@ -290,13 +299,24 @@ public class AnonymousRouteInfo {
 	public ArrayList<SecretKey> getKeyList() {
 		return this.keysForAnonymity;
 	}
+	
 
+	public String toKeyListString(){
+		if(this.keysForAnonymity.size() == 0)
+			return "null";
+		StringBuffer sb = new StringBuffer();
+		for(SecretKey secKey : this.keysForAnonymity){
+			sb.append(secKey.toString() + "\n");
+		}
+		return sb.toString();
+	}
+	
 	/**
 	 * 次ノードに送信する主キーを取得するための関数
 	 * 
 	 * @return
 	 */
-	public byte[] getPrimaryKey() {
+	public Integer getPrimaryKey() {
 		return this.primaryKey;
 	}
 	

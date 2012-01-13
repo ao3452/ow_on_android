@@ -115,8 +115,8 @@ public class C
 	public static final int PORT_PKG = 4101;
 	//public static final String ADDR_NIA = "localhost";
 	//public static final String ADDR_PKG = "localhost";
-	public static final String ADDR_NIA = "cs-d50.cs.nitech.ac.jp";
-	public static final String ADDR_PKG = "cs-d50.cs.nitech.ac.jp";
+	public static final String ADDR_NIA = "cs-d40.cs.nitech.ac.jp";
+	public static final String ADDR_PKG = "cs-d40.cs.nitech.ac.jp";
 
 	public static final int JOIN_NIA = 100;
 	public static final int LEAVE_REPORT_NIA = 200;

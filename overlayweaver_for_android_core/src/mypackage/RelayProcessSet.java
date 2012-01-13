@@ -34,11 +34,11 @@ public class RelayProcessSet {
 	
 	private MessagingAddress dest;
 	private SecretKey key;
-	private byte[] primalKey;
+	private Integer primalKey;
 	private int decOrEnc;
 	private int number;
 	
-	public RelayProcessSet(MessagingAddress dest, SecretKey key, byte[] sendHeader, int decOrEnc , int number){
+	public RelayProcessSet(MessagingAddress dest, SecretKey key, Integer sendHeader, int decOrEnc , int number){
 		this.dest = dest;
 		this.key = key;
 		this.primalKey = sendHeader;
@@ -54,7 +54,7 @@ public class RelayProcessSet {
 		return this.key;
 	}
 	
-	public byte[] getPrimalKey(){
+	public Integer getPrimalKey(){
 		return this.primalKey;
 	}
 	

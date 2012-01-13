@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:orientation="vertical"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent">
+    
+	<TextView  
+        android:id="@+id/txt_communicateMessage"
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" 
+        android:text="送信したいメッセージをいれてください"/>
+    <EditText
+		android:id="@+id/get_communicateMessage"
+		android:layout_height="wrap_content"
+		android:singleLine="true" 
+		android:layout_toRightOf="@+id/txt_communicateMessage" 
+		android:layout_width="wrap_content"/>
+		
+	<TextView  
+        android:id="@+id/txt_communication"
+        android:layout_width="fill_parent" 
+        android:layout_height="wrap_content" 
+        android:text="メッセージを送信する相手を選択してください(匿名路構築後でないと表示されません)"/>	
+	<Spinner
+    	android:id="@+id/communicate_spinner"
+    	android:layout_width="wrap_content"
+    	android:layout_height="wrap_content"
+    	android:drawSelectorOnTop="true"/>
+    	
+	<Button android:id="@+id/communicate_button"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="communicate" />
+		
+  	 <Button android:id="@+id/communicate_finish"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="communicate finish" />
+</LinearLayout>

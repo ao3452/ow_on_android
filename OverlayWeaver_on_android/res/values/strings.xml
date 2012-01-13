@@ -6,6 +6,7 @@
     	<item>put</item>
     	<item>status</item>
     	<item>construct</item>
+    	<item>communicate</item>
     	<item>relay change</item>
   	</string-array>
 	<string name="app_name">overlayweaver_for_android</string>

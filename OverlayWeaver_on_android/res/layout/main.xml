@@ -11,6 +11,7 @@
       <include android:id="@+id/putlayout" layout="@layout/put" />
         <include android:id="@+id/statuslayout" layout="@layout/status" />
         <include android:id="@+id/constructlayout" layout="@layout/construct" />
+        <include android:id="@+id/communicatelayout" layout="@layout/communicate" />
         <include android:id="@+id/relaylayout" layout="@layout/relay" />
 </ViewFlipper>
 

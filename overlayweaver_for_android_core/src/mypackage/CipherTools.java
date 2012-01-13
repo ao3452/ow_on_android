@@ -179,6 +179,14 @@ public class CipherTools {
 
 			ret = Arrays.copyOfRange(dec, C.ALL_CORRECT.length, dec.length);
 		}
+		catch(ClassNotFoundException e){
+			e.printStackTrace();
+			throw e;
+		}
+		catch(BadPaddingException e){
+			e.printStackTrace();
+			throw e;
+		}
 		catch(Exception e){
 			e.printStackTrace();
 			throw e;

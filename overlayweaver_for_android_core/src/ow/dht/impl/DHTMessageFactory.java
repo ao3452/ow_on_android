@@ -107,9 +107,9 @@ public class DHTMessageFactory {
 	 * @param hashValue
 	 * @return
 	 */
-	public static Message getCommunicateMessage(IDAddressPair src, byte[] body, byte[] primeKey,int distinctionTag){
+	public static Message getCommunicateMessage(IDAddressPair src, byte[] body, Integer primeKey,int distinctionTag){
 		int tag = Tag.RELAY.getNumber();
-		return new Message(src, tag, null, (Serializable) body, primeKey, C.TYPE_COMMUNICATION,distinctionTag);
+		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_COMMUNICATION,distinctionTag);
 	}
 	
 	/**
@@ -119,9 +119,9 @@ public class DHTMessageFactory {
 	 * @param hashValue
 	 * @return
 	 */
-	public static Message getCommunicateRelayMessage(IDAddressPair src, byte[] body, byte[] primeKey){
+	public static Message getCommunicateRelayMessage(IDAddressPair src, byte[] body, Integer primeKey){
 		int tag = Tag.RELAY.getNumber();
-		return new Message(src, tag, null, (Serializable) body, primeKey, C.TYPE_COMMUNICATION_RELAY);
+		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_COMMUNICATION_RELAY);
 	}
 	
 	/**
@@ -131,9 +131,9 @@ public class DHTMessageFactory {
 	 * @param hashValue
 	 * @return
 	 */
-	public static Message getCommunicateRejectMessage(IDAddressPair src, byte[] body, byte[] primeKey){
+	public static Message getCommunicateRejectMessage(IDAddressPair src, byte[] body, Integer primeKey){
 		int tag = Tag.RELAY.getNumber();
-		return new Message(src, tag, null, (Serializable) body, primeKey, C.TYPE_COMMUNICATION_REJECT);
+		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_COMMUNICATION_REJECT);
 	}
 	
 	/**
@@ -143,8 +143,8 @@ public class DHTMessageFactory {
 	 * @param hashValue
 	 * @return
 	 */
-	public static Message getChangeApproveMessage(IDAddressPair src, byte[] body, byte[] primeKey){
+	public static Message getChangeApproveMessage(IDAddressPair src, byte[] body, Integer primeKey){
 		int tag = Tag.RELAY.getNumber();
-		return new Message(src, tag, null, (Serializable) body, primeKey, C.TYPE_CHANGE_APPROVE);
+		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_CHANGE_APPROVE);
 	}
 }
