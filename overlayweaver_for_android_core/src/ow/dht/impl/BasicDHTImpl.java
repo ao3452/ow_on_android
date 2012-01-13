@@ -1151,12 +1151,10 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		MessagingAddress dest = getNeighberAddress(nextID);
 
 		// 確認
-		IDAddressPair myPair = getSelfIDAddressPair();
-		config.globalSb.append("\nI'm true sender : " + myPair.toString()+"\n"+"just send to dest : " + dest.toString() +"\nheader : "+header+"\n");
+		//IDAddressPair myPair = getSelfIDAddressPair();
+		//config.globalSb.append("I'm true sender : " + myPair.toString());
+		config.globalSb.append("just send to dest : " + dest.toString()+"\n");
 		
-		Serializable[] contents = msg.getContents();
-		byte[] key = (byte[]) contents[C.MESSAGE_HEADER];
-		config.globalSb.append("send key : " + key + "\n");
 		//System.out.println("I'm true sender : " + myPair.toString());
 		//System.out.println("just send to dest : " + dest.toString());
 		try {
@@ -1171,6 +1169,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 
 		// 匿名路情報をIDをキーにして保存
 		Integer primalKey = Arrays.hashCode(header);
+		config.globalSb.append("entry primalkey : " + primalKey + "\n");
+		config.globalSb.append("entry targetID : " + targetID + "\n");
 		this.senderMap.put(targetID, primalKey);
 		this.senderProcessMap.put(primalKey, constructInfo);
 
@@ -1560,13 +1560,18 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		config.globalSb.append("\ncommunicate start\n");
 		config.globalSb.append("send Message : "+mail+"\n");
 		AnonymousRouteInfo arInfo = this.senderProcessMap.get(mainKey);
-		config.globalSb.append("1");
-		int constructNumber = arInfo.getConstructNumber();
-		int distinctionTag = -1;
-		config.globalSb.append("1.5");
+		int constructNumber;
+		int distinctionTag=-1;
+		try{
+			constructNumber = arInfo.getConstructNumber();			
+		}catch (Exception e){
+			constructNumber=0;
+			config.globalSb.append("error in communicate \n"+e.toString()+"\n"+mainKey+"\n");
+			config.globalSb.append("mainkey : "+mainKey+"\n");
+			config.globalSb.append("targetID : "+targetID+"\n");
+		}
 		config.globalSb.append(arInfo.toKeyListString());
 		ArrayList<SecretKey> keyList = arInfo.getKeyList();
-		config.globalSb.append("2");
 		byte[] byteMail;
 		try {
 			byteMail = MyUtility.object2Bytes(mail);
