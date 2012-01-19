@@ -121,7 +121,7 @@ public class DHTMessageFactory {
 	 */
 	public static Message getCommunicateRelayMessage(IDAddressPair src, byte[] body, Integer primeKey){
 		int tag = Tag.RELAY.getNumber();
-		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_COMMUNICATION_RELAY);
+		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_COMMUNICATION_RELAY,-1);
 	}
 	
 	/**
@@ -133,7 +133,7 @@ public class DHTMessageFactory {
 	 */
 	public static Message getCommunicateRejectMessage(IDAddressPair src, byte[] body, Integer primeKey){
 		int tag = Tag.RELAY.getNumber();
-		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_COMMUNICATION_REJECT);
+		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_COMMUNICATION_REJECT,-1);
 	}
 	
 	/**
@@ -143,8 +143,8 @@ public class DHTMessageFactory {
 	 * @param hashValue
 	 * @return
 	 */
-	public static Message getChangeApproveMessage(IDAddressPair src, byte[] body, Integer primeKey){
+	public static Message getApprovalMessage(IDAddressPair src, byte[] body, Integer primeKey){
 		int tag = Tag.RELAY.getNumber();
-		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_CHANGE_APPROVE);
+		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_CHANGE_APPROVE,-1);
 	}
 }

@@ -69,7 +69,7 @@ public class C
 	//public static final String KEY_SERVER = "/home/tanaka/workspace2/Bifrost_Original2/bin/KeyServer4/";
 	//public static final String KEY_SERVER = "/home/nitech_bifrost1/Bifrost_Original2/bin/KeyServer4/";
 	//public static final String KEY_SERVER = "/home/21417/cig17582/Bifrost_Original2/bin/KeyServer4/";
-	//public static final String KEY_SERVER = "/home/hirose/Bifrost_Original2/KeyServer4/";
+	//public static final String KEY_SERVER = "/home/hirose/ow_on_android/overlayweaver_for_android_core/KeyServer4/";
 	public static final String KEY_SERVER = "/data/local/KeyServer4/";
 
 	public static final String TEST_SERVICE_NAME = "TestService001";
@@ -115,8 +115,8 @@ public class C
 	public static final int PORT_PKG = 4101;
 	//public static final String ADDR_NIA = "localhost";
 	//public static final String ADDR_PKG = "localhost";
-	public static final String ADDR_NIA = "cs-d40.cs.nitech.ac.jp";
-	public static final String ADDR_PKG = "cs-d40.cs.nitech.ac.jp";
+	public static final String ADDR_NIA = "cs-d50.cs.nitech.ac.jp";
+	public static final String ADDR_PKG = "cs-d50.cs.nitech.ac.jp";
 
 	public static final int JOIN_NIA = 100;
 	public static final int LEAVE_REPORT_NIA = 200;

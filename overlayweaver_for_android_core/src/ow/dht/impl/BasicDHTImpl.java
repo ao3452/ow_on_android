@@ -41,6 +41,7 @@ import java.util.logging.Logger;
 import java.lang.Runtime;
 
 import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
@@ -1012,7 +1013,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			// end communicate to PKG
 			// /////////////////////////////////////////////////////////////////////////////////
 			PublicKeyGenerator PKG = (PublicKeyGenerator) MyUtility.bytes2Object(MyUtility.readData(C.KEY_SERVER
-					+ "PKG001"));
+						+ "PKG001"));
+
 			MPK = PKG.getMPK();
 			myPrivateKey = PKG.getPrivateKey(getSelfIDAddressPair().getID().toString());
 			// set Master Publickey and my Private Key
@@ -1134,7 +1136,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		// 引数から匿名路構築情報を作成する
 		// 本当は最新群の値は経路表から取得する必要があるが面倒なので固定値の４でとりあえず進める
 		// もちろん実験の場合は参加ノードの全てのIDレベルが４以上である必要がある
-		int latestIDLevel = 2;
+		int latestIDLevel = 4;
 		AnonymousRouteInfo constructInfo = new AnonymousRouteInfo(targetID, latestIDLevel, relayCount, config);
 		config.incrementConstructNumber();
 		constructInfo.printRouteInfo();
@@ -1286,6 +1288,12 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				//うん、上のは無理。新しいタグを作ってそれに応じて新しいメッセージ経路を作成。
 				communicateProcess(msg);
 				break;
+			case C.TYPE_CHANGE_APPROVE: // 廣瀬が追加 11/27
+				//送信者のみ知ることが出来る
+				//つまり、通信を変更したいノードは平文のmsgにこのタグをつける
+				//うん、上のは無理。新しいタグを作ってそれに応じて新しいメッセージ経路を作成。
+				communicateProcess(msg);
+				break;
 			default:
 				config.globalSb.append("定義していない型のメッセージを受け取りました");
 			}
@@ -1304,6 +1312,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			try{
 				flag = config.getCommunicateMethodFlag(config.getConstructNumber());
 			} catch(Exception e){
+				config.setCommunicateMethodFlag(commFlag.Permit, config.getConstructNumber());
 				//flag = commFlag.Error;	
 			}
 			switch(flag){
@@ -1397,6 +1406,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			case C.TYPE_COMMUNICATION :
 				config.globalSb.append("Communicate Message\n");
 				for (SecretKey secKey : keyList) {
+					if(config.checkRelayID(constructNumber, secKey))
+						continue;
 					body = CipherTools.decryptDataPadding(body, secKey);
 				}
 				config.globalSb.append("recive Message : "+(String)MyUtility.bytes2Object(body)+"\n");
@@ -1404,6 +1415,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			case C.TYPE_COMMUNICATION_REJECT :
 				config.globalSb.append("Reject Message\n");
 				SecretKey tmpSecKey = null;
+				IDAddressPair rejectNode=null;
 				for (SecretKey secKey : keyList) {
 					body = CipherTools.decryptDataPadding(body, secKey);
 					
@@ -1414,24 +1426,32 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 						Object obj = MyUtility.bytes2Object(body);
 						//平文だった場合
 						tmpSecKey = secKey;	
+						break;
 					}catch(IOException e){
-							continue;
+						continue;
 					}catch(ClassNotFoundException e){
 						continue;
 					}
 				}
-				IDAddressPair rejectNode = (IDAddressPair)MyUtility.bytes2Object(body);
+				rejectNode = (IDAddressPair)MyUtility.bytes2Object(body);
 				//拒否するノードを登録
 				config.setRejectID(rejectNode.getID());
 				config.globalSb.append("recive Message : "+rejectNode+"\n");
 				//了承通知を作成、及び送信
+				ID targetID = arInfo.getGlobalTargetID();
 				String approvalMsg = "approval";
-				communicate(arInfo.getGlobalTargetID(),approvalMsg,keyList.indexOf(tmpSecKey));
+				communicate(targetID,approvalMsg,keyList.indexOf(tmpSecKey));
 				config.globalSb.append("了承通知を送信しました\n");
+				config.setRejectID(rejectNode.getID());
+				this.senderMap.remove(targetID);
+				this.senderProcessMap.remove(arInfo.getPrimaryKey());
+				construct(targetID,2);
+				config.globalSb.append("匿名路再構築完了\n");
 				break;
 			case C.TYPE_COMMUNICATION_RELAY :
 				config.globalSb.append("Relay Message\n");
 				SecretKey tmpSecKey1 = null;
+				Integer tmpTag = null;
 				for (SecretKey secKey : keyList) {
 					body = CipherTools.decryptDataPadding(body, secKey);
 					
@@ -1439,22 +1459,25 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 					//平文かどうか確認する機構を追加しないといけない
 					//
 					try{
+						//tmpTag = (Integer)MyUtility.bytes2Object(body);
 						Object obj = MyUtility.bytes2Object(body);
 						//平文だった場合
 						tmpSecKey1 = secKey;
 						//識別タグを入手
-						Integer tmpTag = config.getRelayTag(constructNumber, tmpSecKey1);
+						//Integer tmpTag = config.getRelayTag(constructNumber, tmpSecKey1);
 						//それを保存する
-						config.setRelaySendNode(constructNumber, tmpSecKey1, tmpTag);
+						break;
 					}catch(IOException e){
 						continue;
 					}catch(ClassNotFoundException e){
 						continue;
 					}
 				}
+				tmpTag = (Integer)MyUtility.bytes2Object(body);
+				config.setRelaySendNode(constructNumber, tmpSecKey1, tmpTag);
 				//フラグ操作をする必要がある
 				//フラグじゃなくてもいいけど、変更ノードの情報を登録する必要あり
-				config.globalSb.append("recive Message : "+(Integer)MyUtility.bytes2Object(body)+"\n"+"constructNumber : "+constructNumber+"\n");
+				config.globalSb.append("recive Message : "+tmpTag+"\n"+"constructNumber : "+constructNumber+"\n");
 				//了承通知を作成、及び送信
 				String approvalMsg1 = "approval";
 				communicate(arInfo.getGlobalTargetID(),approvalMsg1,keyList.indexOf(tmpSecKey1));
@@ -1467,7 +1490,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		}
 		catch (Exception e) {
 			// TODO Auto-generated catch block
-			config.globalSb.append("送信先からメッセージを受け取りましたが復号できませんでした");
+			config.globalSb.append("送信先からメッセージを受け取りましたが復号できませんでした\n"+e.toString()+"\n");
 			e.printStackTrace();
 		}
 	}
@@ -1495,27 +1518,38 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			switch(flag){
 			case Permit : // 通常の中継
 				config.globalSb.append("permit\n");
-				ordinaryCommunicateMessage(msg);
+				ordinaryCommunicateMessage(msg,flag);
 				break;
 				
 			case Relay : // 中継のみ許可
 				config.globalSb.append("relay\n");
 				//変更通知を作成しているかを確認
 				if(!(config.checkCommFlag(constructNumber))){
+					config.globalSb.append("変更通知作成前 \n");
 					//変更通知作成して通常通りの中継も行う
+					config.setOldCommFlag(constructNumber);
 					communicateChange(msg,flag);
-					ordinaryCommunicateMessage(msg);
+					ordinaryCommunicateMessage(msg,flag);
 					
 				}else{
+					config.globalSb.append("変更通知作成後 \n");
 					//了承通知を受信しているかを確認
 					if(config.getApprovalChangeFlag(constructNumber)){
+						config.globalSb.append("了承通知受信後 \n");
 						//受信していたら識別タグを読み取り次のノードへ送信
 						int distinctionTag = (Integer) contents[C.MESSAGE_DISTINCTION_TAG];
-						MessagingAddress nextNode = config.getNextNodeAddress(distinctionTag, getNeighberAddress(msg.getSource().getID()));
-						sender.send(nextNode, msg);
+						MessagingAddress org = getNeighberAddress(msg.getSource().getID());
+						MessagingAddress nextNode = config.getNextNodeAddress(distinctionTag, org);
+						Message newMessage = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), 
+								(byte[]) contents[C.MESSAGE_BODY], value.getPrimalKey(), distinctionTag);
+						//Message newMessage = new Message(this.getSelfIDAddressPair(),Tag.RELAY.getNumber(),contents);
+						config.globalSb.append("org address :" + org.toString() + "\n");
+						config.globalSb.append("just send to dest : " + nextNode.toString()+ "\n");
+						sender.send(nextNode, newMessage);
 					}else{
+						config.globalSb.append("了承通知受信前 \n");
 						//受信していないなら通常通りの中継
-						ordinaryCommunicateMessage(msg);
+						ordinaryCommunicateMessage(msg,flag);
 					}
 				}
 				break;
@@ -1525,9 +1559,10 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				//変更通知を作成しているかを確認
 				if(!(config.checkCommFlag(constructNumber))){
 					//変更通知作成して通常通りの中継も行う
+					config.setOldCommFlag(constructNumber);
 					communicateChange(msg,flag);
 					
-					ordinaryCommunicateMessage(msg);
+					ordinaryCommunicateMessage(msg,flag);
 					
 				}else{
 					//了承通知を受信しているかを確認
@@ -1536,7 +1571,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 						config.decrementConstructNumber();
 					}else{
 						//受信していないなら通常通りの中継
-						ordinaryCommunicateMessage(msg);
+						ordinaryCommunicateMessage(msg,flag);
 					}
 				}
 				break;
@@ -1581,6 +1616,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				//中継のみ行うノードが含まれていた場合、処理を変更
 				if(config.checkRelayID(constructNumber, secKey)){
 					distinctionTag = config.getRelayTag(constructNumber, secKey); 
+					config.globalSb.append("distinctionTag : "+ distinctionTag+"\n");
 				}else{
 					byteMail = CipherTools.encryptDataPadding(byteMail, secKey);
 				}
@@ -1601,7 +1637,10 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		catch (IOException e) {
 			// TODO Auto-generated catch block
 			config.globalSb.append("error");
+		} catch(Exception e){
+			config.globalSb.append(e.toString());
 		}
+		
 		config.globalSb.append("communicate end\n");
 		return true;
 	}
@@ -1635,7 +1674,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			MessagingAddress dest = getNeighberAddress(localTargetID);
 
 			// メッセージ作成
-			Message msg = DHTMessageFactory.getCommunicateMessage(this.getSelfIDAddressPair(), byteMail, primalKey,distinctionTag);
+			Message msg = DHTMessageFactory.getApprovalMessage(this.getSelfIDAddressPair(), byteMail, primalKey);
 			sender.send(dest, msg);
 		}
 		catch (IOException e) {
@@ -1706,8 +1745,10 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			Message msg;
 			switch(flag){
 			case Relay :
+				config.globalSb.append("Construct Change : relay flag\n");
 				// メッセージ作成
 				Integer reply = number;
+				config.globalSb.append("send Message : "+ reply+ "\n");
 				byte[] body = MyUtility.object2Bytes(reply);
 				body = CipherTools.encryptDataPadding(body, secKey);
 				
@@ -1717,8 +1758,10 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				msg = DHTMessageFactory.getCommunicateRelayMessage(getSelfIDAddressPair(), body, primeKey);
 				break;
 			case Reject : 
+				config.globalSb.append("Construct Change : reject flag");
 				// メッセージ作成
 				IDAddressPair reply1 = getSelfIDAddressPair();
+				config.globalSb.append("send Message : "+ reply1+ "\n");
 				byte[] body1 = MyUtility.object2Bytes(reply1);
 				body = CipherTools.encryptDataPadding(body1, secKey);
 				
@@ -1731,6 +1774,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			//了承通知用のフラグを初期化
 			config.setApprovalChangeFlag(false, number);
 			//送信
+			config.globalSb.append("send key hash : " + primeKey + "\n");
+			config.globalSb.append("just send to dest : " + org1.toString());
 			sender.send(org1,msg);
 			config.globalSb.append("\nconstruct change end\n");
 		}
@@ -1767,18 +1812,23 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			Message msg;
 			switch(flag){
 			case Relay :
+				config.globalSb.append("Communicate Change : relay flag\n");
 				// メッセージ作成
 				Integer reply = value.getNumber();
+				config.globalSb.append("send Message : "+ reply+ "\n");
 				byte[] body = MyUtility.object2Bytes(reply);
 				body = CipherTools.encryptDataPadding(body, secKey);
 				
 				MessagingAddress dest = value.getDestMessagingAddress();
 				config.setRelayChangeNode(reply, org1, dest);
+				config.globalSb.append("org : "+org1.toString()+"\n"+"dest : "+dest+"\n");
 				msg = DHTMessageFactory.getCommunicateRelayMessage(getSelfIDAddressPair(), body, key);
 				break;
 			case Reject : 
+				config.globalSb.append("Communicate Change : reject flag\n");
 				// メッセージ作成
 				IDAddressPair reply1 = getSelfIDAddressPair();
+				config.globalSb.append("send Message : "+ reply1+ "\n");
 				byte[] body1 = MyUtility.object2Bytes(reply1);
 				body = CipherTools.encryptDataPadding(body1, secKey);
 				
@@ -1788,6 +1838,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				msg = null;	
 			}
 			//送信
+			config.globalSb.append("send key hash : " + key + "\n");
+			config.globalSb.append("just send to dest : " + org1.toString());
 			sender.send(org1,msg);
 			config.globalSb.append("\ncommincate change end\n");
 		}
@@ -1804,7 +1856,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	 * @author hirose
 	 * 
 	 */
-	private void ordinaryCommunicateMessage(Message msg){
+	private void ordinaryCommunicateMessage(Message msg,commFlag flag){
 		try {
 			config.globalSb.append("\nordinary commincate message start\n");
 			Serializable[] contents = msg.getContents();
@@ -1816,6 +1868,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			RelayProcessSet value = relayProcessMap.get(key);
 			SecretKey secKey = value.getSecretKey();
 		
+			if(flag==commFlag.Relay)
+				distinctionTag = value.getNumber();
 			
 			MessagingAddress dest = value.getDestMessagingAddress();
 			
@@ -1840,7 +1894,6 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				Object mail = MyUtility.bytes2Object(body);
 				if (mail instanceof String) {
 					config.globalSb.append("mail : " + mail.toString()+"\n");
-
 					// 返信のための処理
 					// 直接の送信先入手
 					IDAddressPair addr = msg.getSource();
@@ -1851,8 +1904,9 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 					body = MyUtility.object2Bytes(reply);
 					body = CipherTools.encryptDataPadding(body, secKey);
 					msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, key,distinctionTag);
-					config.globalSb.append("send key hash : " + key.hashCode() + "\n");
+					config.globalSb.append("send key hash : " + key + "\n");
 					// 送信
+					config.globalSb.append("\n"+"just send to sender : " + dest2.toString()+"\n");
 					sender.send(dest2, msg);
 				}
 				return;
@@ -1860,41 +1914,51 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			//受信したメッセージのタイプによって送信方法の変更
 			switch(type){
 			case C.TYPE_COMMUNICATION : 
-				config.globalSb.append("send key : " + primalKey +"\n");
+				config.globalSb.append("Communicate type : communicate \n");
 				msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, primalKey,distinctionTag);
 				sender.send(dest, msg);
 				break;
 				
 				//中継拒否用の変更通知用
 			case C.TYPE_COMMUNICATION_REJECT : 
-				config.globalSb.append("send key : " + primalKey +"\n");
+				config.globalSb.append("Communicate type : communicate reject \n");
 				msg = DHTMessageFactory.getCommunicateRejectMessage(getSelfIDAddressPair(), body, primalKey);
 				sender.send(dest, msg);
 				break;
 				
 				//暗号処理なし用の変更通知用
 			case C.TYPE_COMMUNICATION_RELAY :
-				config.globalSb.append("send key : " + primalKey +"\n");
+				config.globalSb.append("Communicate type : communicate relay\n");
 				msg = DHTMessageFactory.getCommunicateRelayMessage(getSelfIDAddressPair(), body, primalKey);
 				sender.send(dest, msg);
 				break;
 				
 				//了承通知用
 			case C.TYPE_CHANGE_APPROVE : 
-				config.globalSb.append("send key : " + primalKey +"\n");
-				msg = DHTMessageFactory.getChangeApproveMessage(getSelfIDAddressPair(), body, primalKey);
-				sender.send(dest, msg);
+				config.globalSb.append("Communicate type : communicate Approve\n");
+				try{
+					Object mail = MyUtility.bytes2Object(body);
+					config.globalSb.append("了承通知を受信しました\n");
+					config.setApprovalChangeFlag(true, value.getNumber());
+				}catch(Exception e){
+					msg = DHTMessageFactory.getApprovalMessage(getSelfIDAddressPair(), body, primalKey);
+					sender.send(dest, msg);					
+				}
+
 				break;
 			}
+			config.globalSb.append("send key : " + primalKey +"\n");
 			config.globalSb.append("\n"+"just send to dest : " + dest.toString()+"\n");
 			config.globalSb.append("\nordinary commincate message end\n");
 		}
 		catch (IOException e) {
 			// TODO Auto-generated catch block
+			config.globalSb.append("IOException\n"+e.toString()+"\n");
 			e.printStackTrace();
 		}
 		catch (Exception e) {
 			// TODO Auto-generated catch block
+			config.globalSb.append("Exception\n"+e.toString()+"\n");
 			e.printStackTrace();
 		}
 	}
@@ -1972,6 +2036,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			e.printStackTrace();
 		}
 		catch (Exception e) {
+			config.globalSb.append("Exception\n"+e.toString()+"\n");
 			e.printStackTrace();
 		}
 	}

@@ -331,7 +331,7 @@ public class DHTConfiguration {
 	//中継拒否リスト用変数
 	public final int REJECT_NODE_NUMBER = 10;
 	private int rejectNodeNumber = 0;
-	private ArrayList<ID> rejectID = new ArrayList<ID>(10);
+	private ArrayList<ID> rejectID = new ArrayList<ID>();
 //	private ID rejectID[] = new ID[REJECT_NODE_NUMBER];
 	public int getRejectNodeNumber(){ return rejectNodeNumber; }
 	public void setRejectID(ID newID){
@@ -359,7 +359,7 @@ public class DHTConfiguration {
 		Reject,//通信拒否
 		Error
 	}
-	private ArrayList<commFlag> communicateMethodFlag = new ArrayList<commFlag>(10);
+	private ArrayList<commFlag> communicateMethodFlag = new ArrayList<commFlag>();
 	//private commFlag communicateMethodFlag[] = new commFlag[REJECT_NODE_NUMBER];
 	//=commFlag.Permit;
 	public commFlag getCommunicateMethodFlag(int number){ return communicateMethodFlag.get(number); }
@@ -368,20 +368,20 @@ public class DHTConfiguration {
 		try{
 			communicateMethodFlag.set(number,newFlag);
 		} catch(Exception e){
-			communicateMethodFlag.add(newFlag);
+			communicateMethodFlag.add(number,newFlag);
 		}
 		//return old;
 	}
 	
 	//変更通知用のフラグ
-	private ArrayList<commFlag> oldCommFlag = new ArrayList<commFlag>(10);
+	private ArrayList<commFlag> oldCommFlag = new ArrayList<commFlag>();
 	//private commFlag oldCommFlag[] = new commFlag[REJECT_NODE_NUMBER];
 	//=commFlag.Permit;
 	public void setOldCommFlag(int number){
 		try{
 			oldCommFlag.set(number, communicateMethodFlag.get(number));
 		} catch (Exception e){
-			oldCommFlag.add(communicateMethodFlag.get(number));
+			oldCommFlag.add(number,communicateMethodFlag.get(number));
 		}
 	}
 	public boolean checkCommFlag(int number){
@@ -410,7 +410,7 @@ public class DHTConfiguration {
 		try{
 			approvalChangeFlag.set(number, newFlag);
 		} catch(Exception e){
-			approvalChangeFlag.add(newFlag);
+			approvalChangeFlag.add(number,newFlag);
 		}
 		//return old;
 	}
@@ -458,7 +458,7 @@ public class DHTConfiguration {
 		} catch (Exception e){
 			RelaySendNode tmpRelaySendNode = new RelaySendNode();
 			tmpRelaySendNode.setRelayList(setKey,setTag);
-			relaySendNodes.add(tmpRelaySendNode);
+			relaySendNodes.add(number,tmpRelaySendNode);
 		}
 	}
 	public Integer getRelayTag(int number,SecretKey setKey){
@@ -503,7 +503,7 @@ public class DHTConfiguration {
 		} catch(Exception e) {
 			RelayChangeNode tmpRelayChangeNode = new RelayChangeNode();
 			tmpRelayChangeNode.setRelayChangeNode(org, dest);
-			relayChangeNodes.add(tmpRelayChangeNode);
+			relayChangeNodes.add(number,tmpRelayChangeNode);
 		}
 	}
 	public MessagingAddress getRelayOrgAddress(int number){
@@ -514,7 +514,7 @@ public class DHTConfiguration {
 	}
 	public MessagingAddress getNextNodeAddress(int number,MessagingAddress tmp){
 		RelayChangeNode tmpRelayNode = relayChangeNodes.get(number);
-		if(tmpRelayNode.getRelayOrgAddress()==tmp){
+		if(tmp.equals(tmpRelayNode.getRelayOrgAddress())){
 			return tmpRelayNode.getRelayDestAddress();
 		}else{
 			return tmpRelayNode.getRelayOrgAddress();
@@ -532,5 +532,6 @@ public class DHTConfiguration {
 	public ID getMyID(){
 		return myID;
 	}
+
 }
 

@@ -14,6 +14,10 @@
         android:layout_width="fill_parent" 
         android:layout_height="wrap_content" 
         android:text=""/>
+  	 <Button android:id="@+id/reload_constructNumber"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="reload constructNumber" />
      <TextView  
         android:id="@+id/txt_changeConstructNumber"
         android:layout_width="fill_parent" 

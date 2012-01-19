@@ -9,6 +9,10 @@
     	android:layout_width="wrap_content"
     	android:layout_height="wrap_content"
     	android:drawSelectorOnTop="true"/>
+  	 <Button android:id="@+id/construct_reload_member"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="consctruct_reload_member" />
   	 <Button android:id="@+id/construct"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
