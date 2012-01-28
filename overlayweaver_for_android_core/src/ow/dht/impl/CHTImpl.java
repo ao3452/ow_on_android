@@ -382,7 +382,7 @@ public final class CHTImpl<V extends Serializable> implements DHT<V> {
 	}
 
 	@Override
-	public boolean construct(ID targetID, int relayAmount) {
+	public boolean construct(ID targetID, int relayAmount,int i) {
 		// TODO Auto-generated method stub
 		return false;
 	}
@@ -394,7 +394,7 @@ public final class CHTImpl<V extends Serializable> implements DHT<V> {
 	}
 
 	@Override
-	public boolean communicate(ID targetID, Object mail) {
+	public boolean communicate(ID targetID, Object mail,int i) {
 		// TODO Auto-generated method stub
 		return false;
 	}

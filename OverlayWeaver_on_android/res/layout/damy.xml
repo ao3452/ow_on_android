@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
   xmlns:android="http://schemas.android.com/apk/res/android"
-  android:orientation="vertical"
   android:layout_width="match_parent"
-  android:layout_height="match_parent">
+  android:layout_height="match_parent" android:orientation="vertical">
 	<TextView  
         android:id="@+id/id_address"
         android:layout_width="fill_parent" 
@@ -19,24 +18,50 @@
         android:layout_width="fill_parent" 
         android:layout_height="wrap_content" 
         android:text=""/>
+    <LinearLayout android:layout_width="match_parent" android:id="@+id/linearLayout2" android:layout_height="wrap_content">
     <Button 
         android:layout_width="wrap_content" 
         android:id="@+id/cpu_button" 
         android:layout_height="wrap_content" 
-        android:layout_toRightOf="@+id/txt1" 
         android:text="get CPU"/>
 	<Button 
         android:layout_width="wrap_content" 
         android:id="@+id/log_button" 
         android:layout_height="wrap_content" 
-        android:layout_toRightOf="@+id/txt1" 
         android:text="get log"/>
     <Button 
         android:layout_width="wrap_content" 
         android:id="@+id/reset_button" 
         android:layout_height="wrap_content" 
-        android:layout_toRightOf="@+id/txt1" 
         android:text="log reset"/>
+    <Button 
+        android:layout_width="wrap_content" 
+        android:id="@+id/make_messagefile_read_button" 
+        android:layout_height="wrap_content" 
+        android:text="MakeMessage"/>
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:id="@+id/linearLayout3" android:layout_height="wrap_content">
+    <Button 
+        android:layout_width="wrap_content" 
+        android:id="@+id/cpu_stop_button" 
+        android:layout_height="wrap_content" 
+        android:text="stop CPU"/>
+	<Button 
+        android:layout_width="wrap_content" 
+        android:id="@+id/cpu_start_button" 
+        android:layout_height="wrap_content" 
+        android:text="start CPU"/>
+    <Button 
+        android:layout_width="wrap_content" 
+        android:id="@+id/cpu_reset_button" 
+        android:layout_height="wrap_content" 
+        android:text="cpu log reset"/>
+    <Button 
+        android:layout_width="wrap_content" 
+        android:id="@+id/construct_file_read_button" 
+        android:layout_height="wrap_content" 
+        android:text="Construct"/>
+    </LinearLayout>
     <TextView  
         android:id="@+id/txt2"
         android:layout_width="fill_parent" 
@@ -52,14 +77,37 @@
         android:id="@+id/txt4"
         android:layout_width="fill_parent" 
         android:layout_height="wrap_content" 
-        android:text=""/>
+        android:text=""/> 
+	<LinearLayout android:layout_width="match_parent" 
+              android:id="@+id/linearLayout1" 
+              android:layout_height="wrap_content" android:weightSum="1" android:baselineAligned="false">
 	<EditText
-        android:id="@+id/log_view"
+        android:id="@+id/cpu_log_view"
         android:textSize="10px"
-        android:text="@string/LOGMessage" 
-        android:layout_height="fill_parent"
-        android:layout_width="fill_parent"
         android:layout_marginTop="5px"
-        android:scrollbars="horizontal|vertical" android:gravity="top|left" android:editable="true" android:autoText="true"/>
+        android:scrollbars="horizontal|vertical" android:gravity="top|left" android:editable="true" android:autoText="true" android:layout_width="100dp" android:layout_height="100dp"/>
+	<EditText
+        android:id="@+id/make_log_view"
+        android:textSize="10px"
+        android:layout_marginTop="5px"
+        android:scrollbars="horizontal|vertical" android:gravity="top|left" android:editable="true" android:autoText="true" android:layout_width="200dp" android:layout_height="100dp"/>
+  	<EditText
+        android:id="@+id/construct_log_view"
+        android:textSize="10px"
+        android:layout_marginTop="5px"
+        android:scrollbars="horizontal|vertical" android:gravity="top|left" android:editable="true" android:autoText="true" android:layout_width="200dp" android:layout_height="100dp"/>          
+  	<EditText
+        android:id="@+id/other_time_log_view"
+        android:textSize="10px"
+        android:layout_marginTop="5px"
+        android:scrollbars="horizontal|vertical" android:gravity="top|left" android:editable="true" android:autoText="true" android:layout_width="200dp" android:layout_height="100dp"/>          
 
+    </LinearLayout>
+    <EditText
+        android:id="@+id/log_view"
+        android:textSize="10px" 
+        android:layout_marginTop="5px"
+        android:scrollbars="horizontal|vertical" android:gravity="top|left" android:editable="true" android:autoText="true" android:layout_width="match_parent" android:layout_height="match_parent"/>	
+           
 </LinearLayout>
+

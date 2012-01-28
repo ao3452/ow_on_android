@@ -21,6 +21,8 @@ import java.util.ArrayList;
 
 import javax.crypto.SecretKey;
 
+import mypackage.TimeCount;
+
 import ow.id.ID;
 import ow.id.IDAddressPair;
 import ow.messaging.MessagingAddress;
@@ -368,7 +370,12 @@ public class DHTConfiguration {
 		try{
 			communicateMethodFlag.set(number,newFlag);
 		} catch(Exception e){
-			communicateMethodFlag.add(number,newFlag);
+			try{
+				communicateMethodFlag.add(number,newFlag);
+			}catch(IndexOutOfBoundsException e2){
+				communicateMethodFlag.add(newFlag);
+				constructNumber--;
+			}
 		}
 		//return old;
 	}
@@ -469,7 +476,7 @@ public class DHTConfiguration {
 		try{
 			RelaySendNode tmpRelayKey = relaySendNodes.get(number);
 			for(SecretKey keyCheker : tmpRelayKey.relayKey){
-				if(checkKey==keyCheker)
+				if(checkKey.equals(keyCheker))
 					return true;
 			}
 			return false;
@@ -533,5 +540,31 @@ public class DHTConfiguration {
 		return myID;
 	}
 
+	//時間計測用変数
+	public long globalTime = 0;
+	public long globalTotalTime = 0;
+	//構築時間用
+	public long globalConstructStartTime = 0;
+	public long globalConstructResultTime = 0;
+	public long globalConstructTotalTime = 0;
+	public long globalResultTime = 0;
+	//中継用
+	public long globalRelayTime = 0;
+	public long globalRelayResultTime = 0;
+	public long globalRelayMakeMessageStartTime = 0;
+	public long globalRelayMakeMessageResultTime = 0;
+	public long globalRelayTotalTime = 0;
+	public long globalRelayMakeMessageTotalTime = 0;
+	
+	//計測用配列
+	//public ArrayList<TimeCount> arrayTime = new ArrayList<TimeCount>(20);
+	public TimeCount[] arrayTime = new TimeCount[20];
+	public int sizeArray=0;
+	
+	public long trueGlobalConstructTime=0;
+	public long trueGlobalCommunicationTime=0;
+	public long trueGlabalToTime=0;
+	
 }
+
 

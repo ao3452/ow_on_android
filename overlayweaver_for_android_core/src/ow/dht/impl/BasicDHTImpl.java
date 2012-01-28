@@ -17,10 +17,13 @@
 
 package ow.dht.impl;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.net.UnknownHostException;
@@ -54,6 +57,7 @@ import ow.dht.ByteArray;
 import ow.dht.DHT;
 import ow.dht.DHTConfiguration;
 import ow.dht.DHTConfiguration.commFlag;
+
 
 import ow.dht.ValueInfo;
 import ow.dht.memcached.Memcached;
@@ -1132,7 +1136,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	 * 匿名路構築情報を作成し、送信するクラス
 	 */
 	@Override
-	public boolean construct(ID targetID, int relayCount) {
+	public boolean construct(ID targetID, int relayCount,int i) {
+		config.globalTime=System.currentTimeMillis();
 		// 引数から匿名路構築情報を作成する
 		// 本当は最新群の値は経路表から取得する必要があるが面倒なので固定値の４でとりあえず進める
 		// もちろん実験の場合は参加ノードの全てのIDレベルが４以上である必要がある
@@ -1140,22 +1145,29 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		AnonymousRouteInfo constructInfo = new AnonymousRouteInfo(targetID, latestIDLevel, relayCount, config);
 		config.incrementConstructNumber();
 		constructInfo.printRouteInfo();
-		config.globalSb.append(constructInfo.toString());
+		//config.globalSb.append(constructInfo.toString());
 
 		// 直接の送信先を取得
 		ID nextID = constructInfo.getLocalTargetID();
-
+		
+		config.globalConstructStartTime=System.currentTimeMillis();
 		// 匿名路情報からヘッダ部を作成し、メッセージ作成
 		byte[] header = constructInfo.getConstructMessage(MPK).getHeader();
-		Message msg = DHTMessageFactory.getConstructMessage(this.getSelfIDAddressPair(), header);
-
+		//config.arrayTime.add(new TimeCount(config.globalTime,System.currentTimeMillis()));
+		//config.arrayTime[config.sizeArray++]=new TimeCount(config.globalTime,System.currentTimeMillis());
+		//Message msg = DHTMessageFactory.getConstructMessage(this.getSelfIDAddressPair(), header,config.arrayTime,config.sizeArray);
+		Message msg = DHTMessageFactory.getConstructMessage(this.getSelfIDAddressPair(), header,
+				config.globalTime,System.currentTimeMillis()-config.globalTime,i);
+		config.globalConstructResultTime=System.currentTimeMillis()-config.globalConstructStartTime;
+		//config.globalConstructTotalTime+=config.globalConstructResultTime;
+		
 		// 送信先取得（？）
 		MessagingAddress dest = getNeighberAddress(nextID);
 
 		// 確認
 		//IDAddressPair myPair = getSelfIDAddressPair();
 		//config.globalSb.append("I'm true sender : " + myPair.toString());
-		config.globalSb.append("just send to dest : " + dest.toString()+"\n");
+		//config.globalSb.append("just send to dest : " + dest.toString()+"\n");
 		
 		//System.out.println("I'm true sender : " + myPair.toString());
 		//System.out.println("just send to dest : " + dest.toString());
@@ -1171,8 +1183,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 
 		// 匿名路情報をIDをキーにして保存
 		Integer primalKey = Arrays.hashCode(header);
-		config.globalSb.append("entry primalkey : " + primalKey + "\n");
-		config.globalSb.append("entry targetID : " + targetID + "\n");
+		//config.globalSb.append("entry primalkey : " + primalKey + "\n");
+		//config.globalSb.append("entry targetID : " + targetID + "\n");
 		this.senderMap.put(targetID, primalKey);
 		this.senderProcessMap.put(primalKey, constructInfo);
 
@@ -1185,6 +1197,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	 */
 	@Override
 	public boolean constructTest(ID targetID, ID[] relayID) {
+		config.globalTime=System.currentTimeMillis();
 		// TODO Auto-generated method stub
 		AnonymousRouteInfo constructInfo = new AnonymousRouteInfo(targetID, relayID);
 		constructInfo.printRouteInfo();
@@ -1194,15 +1207,18 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 
 		// 匿名路情報からヘッダ部を作成し、メッセージ作成
 		byte[] header = constructInfo.getConstructMessage(MPK).getHeader();
-		Message msg = DHTMessageFactory.getConstructMessage(this.getSelfIDAddressPair(), header);
+		//config.arrayTime.add(new TimeCount(config.globalTime,System.currentTimeMillis()));
+		//config.arrayTime[config.sizeArray++]=new TimeCount(config.globalTime,System.currentTimeMillis());
+		Message msg = DHTMessageFactory.getConstructMessage(this.getSelfIDAddressPair(), header,
+				config.globalTime,System.currentTimeMillis()-config.globalTime,0);
 
 		// 送信先取得（？）
 		MessagingAddress dest = getNeighberAddress(nextID);
 
 		// 確認
 		IDAddressPair myPair = getSelfIDAddressPair();
-		config.globalSb.append("I'm true sender : " + myPair.toString());
-		config.globalSb.append("just send to dest : " + dest.toString());
+		//config.globalSb.append("I'm true sender : " + myPair.toString());
+		//config.globalSb.append("just send to dest : " + dest.toString());
 		try {
 			sender.send(dest, msg);
 		}
@@ -1261,38 +1277,39 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	protected class RelayMessageHandler implements MessageHandler {
 		@Override
 		public Message process(Message msg) throws Exception {
+			long startTime=System.currentTimeMillis();
 //			IDAddressPair pair = getSelfIDAddressPair();
-			config.globalSb.append("\nreceive message");
+			//config.globalSb.append("\nreceive message");
 
 			Serializable[] contents = msg.getContents();
 			int type = (Integer) contents[C.MESSAGE_TYPE];
 
 			switch (type) {
 			case C.TYPE_CONSTRUCTION:
-				constructProcess(msg);
+				constructProcess(msg,startTime);
 				break;
 			case C.TYPE_REPAIR:
 				break;
 			case C.TYPE_COMMUNICATION:
-				communicateProcess(msg);
+				communicateProcess(msg,startTime);
 				break;
 			case C.TYPE_COMMUNICATION_REJECT: // 廣瀬が追加 11/27
 				//送信者のみ知ることが出来る
 				//つまり、通信を変更したいノードは平文のmsgにこのタグをつける
 				//うん、上のは無理。新しいタグを作ってそれに応じて新しいメッセージ経路を作成。
-				communicateProcess(msg);
+				communicateProcess(msg,startTime);
 				break;
 			case C.TYPE_COMMUNICATION_RELAY: // 廣瀬が追加 11/27
 				//送信者のみ知ることが出来る
 				//つまり、通信を変更したいノードは平文のmsgにこのタグをつける
 				//うん、上のは無理。新しいタグを作ってそれに応じて新しいメッセージ経路を作成。
-				communicateProcess(msg);
+				communicateProcess(msg,startTime);
 				break;
 			case C.TYPE_CHANGE_APPROVE: // 廣瀬が追加 11/27
 				//送信者のみ知ることが出来る
 				//つまり、通信を変更したいノードは平文のmsgにこのタグをつける
 				//うん、上のは無理。新しいタグを作ってそれに応じて新しいメッセージ経路を作成。
-				communicateProcess(msg);
+				communicateProcess(msg,startTime);
 				break;
 			default:
 				config.globalSb.append("定義していない型のメッセージを受け取りました");
@@ -1305,8 +1322,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		/*
 		 * 匿名路構築のためのメッセージが来た場合の処理
 		 */
-		private void constructProcess(Message recvMsg) {
-			config.globalSb.append("\nconstructProcess\n");
+		private void constructProcess(Message recvMsg,long startTime) {
+			//config.globalSb.append("\nconstructProcess\n");
 			//廣瀬が変更 11/29
 			commFlag flag = commFlag.Permit;
 			try{
@@ -1317,9 +1334,9 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			}
 			switch(flag){
 			case Permit : // 通常の中継
-				config.globalSb.append("construct permit start\n");
-				ordinaryConstructMessage(recvMsg);
-				config.globalSb.append("\nconstruct permit end\n");
+				//config.globalSb.append("construct permit start\n");
+				ordinaryConstructMessage(recvMsg,startTime);
+				//config.globalSb.append("\nconstruct permit end\n");
 				//構築している匿名路が増加したため構築数を増加
 				config.incrementConstructNumber();
 				break;
@@ -1328,7 +1345,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				//変更通知作成して送信者に送信
 				constructChange(recvMsg,flag,config.getConstructNumber());
 				//次のノードへ通常通りの中継を行う
-				ordinaryConstructMessage(recvMsg);
+				ordinaryConstructMessage(recvMsg,startTime);
 				//構築している匿名路が増加したため構築数を増加
 				config.incrementConstructNumber();
 				break;
@@ -1341,7 +1358,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				config.globalSb.append("Error\n");
 				config.setCommunicateMethodFlag(commFlag.Permit, config.getConstructNumber());
 				config.globalSb.append("Error2\n");
-				ordinaryConstructMessage(recvMsg);
+				ordinaryConstructMessage(recvMsg,startTime);
 				config.incrementConstructNumber();
 			}
 			
@@ -1356,24 +1373,24 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		/*
 		 * 匿名通信のためのメッセージが来た場合の処理 関数が長くなってきたからどこかでまとめるべきかもしれない。
 		 */
-		private void communicateProcess(Message msg) {
-			config.globalSb.append("\nCommunicate Process start\n");
+		private void communicateProcess(Message msg,long startTime) {
+			//config.globalSb.append("\nCommunicate Process start\n");
 			Serializable[] contents = msg.getContents();
 			Integer key = (Integer) contents[C.MESSAGE_PRIMALKEY];
 
 			// 処理内容を取得する
-			config.globalSb.append("receive key : " + key+ "\n");
+			//config.globalSb.append("receive key : " + key+ "\n");
 
 			// 送信ノードとしての動作
 			if (senderProcessMap.containsKey(key)) {
-				receiveMessageAsSender(msg);
+				receiveMessageAsSender(msg,startTime);
 			}
 
 			// 中継ノード、または受信ノードとしての動作
 			else if (relayProcessMap.containsKey(key)) {
-				receiveMessageAsRelay(msg);
+				receiveMessageAsRelay(msg,startTime);
 			}
-			config.globalSb.append("Communicate Process end\n");
+			//config.globalSb.append("Communicate Process end\n");
 		}
 		/*
 		 * 匿名路の変更のためのメッセージが来た場合の処理
@@ -1383,7 +1400,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			//まだ実装してない・・・というかこの関数ではダメだと思う
 			//返信用の関数を用意して使わないと行けない。
 			//ただ、これは返信用で八田さんが実装してあるはずなので、それを利用してやりたい。
-			communicate(lastKey, MPK);
+			//communicate(lastKey, MPK);
 			//この関数ではダメ。ここでは新しい匿名路構築するための部分と作成したメッセージ再送の関数にしないと行けない
 		}
 	}
@@ -1391,26 +1408,50 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	/*
 	 * 送信ノードとしてメッセージを受け取った場合
 	 */
-	private void receiveMessageAsSender(Message msg) {
+	private void receiveMessageAsSender(Message msg,long startTime) {
 		try {
-			config.globalSb.append("reciveMessageAsSender start\n");
+			long tmpTime = config.globalTime;
+			//config.globalSb.append("reciveMessageAsSender start\n");
 			Serializable[] contents = msg.getContents();
 			byte[] body = (byte[]) contents[C.MESSAGE_BODY];
 			Integer key = (Integer) contents[C.MESSAGE_PRIMALKEY];
 			int type = (Integer) contents[C.MESSAGE_TYPE];
+			//TimeCount[] aTime = (TimeCount[]) contents[C.MESSAGE_TIMECOUNT];
+			//int size =(Integer)contents[C.MESSAGE_SIZE];
 			
 			AnonymousRouteInfo arInfo = senderProcessMap.get(key);
 			int constructNumber = arInfo.getConstructNumber();
 			ArrayList<SecretKey> keyList = arInfo.getKeyList();
 			switch(type){
 			case C.TYPE_COMMUNICATION :
-				config.globalSb.append("Communicate Message\n");
+				//config.globalSb.append("Communicate Message\n");
 				for (SecretKey secKey : keyList) {
 					if(config.checkRelayID(constructNumber, secKey))
 						continue;
 					body = CipherTools.decryptDataPadding(body, secKey);
 				}
-				config.globalSb.append("recive Message : "+(String)MyUtility.bytes2Object(body)+"\n");
+				String recvMsg =(String)MyUtility.bytes2Object(body);
+				//config.globalSb.append("recive Message : "+recvMsg+"\n");
+				long endTime = System.currentTimeMillis();
+				if(recvMsg.equals("construct complete")){
+					long time= endTime-tmpTime;
+					config.globalSb.append("construct time : "+time+"\n");
+					config.globalResultTime=time;
+				}else{
+					long time= endTime-config.globalRelayTime;
+					config.globalSb.append("communicate time : "+time+"\n");
+					config.globalRelayResultTime=time;
+				}
+				long toTime=(Long)contents[C.MESSAGE_TO_TIME];
+				config.trueGlobalConstructTime=endTime-(Long)contents[C.MESSAGE_START_TIME];
+				config.trueGlabalToTime=toTime+endTime-startTime;
+				config.trueGlobalCommunicationTime=config.trueGlobalConstructTime-config.trueGlabalToTime;
+				
+				
+				//aTime[size++]=new TimeCount(startTime,endTime);
+				//config.arrayTime=aTime;
+				//config.sizeArray=size;
+				//config.globalTotalTime+=time;
 				break;
 			case C.TYPE_COMMUNICATION_REJECT :
 				config.globalSb.append("Reject Message\n");
@@ -1440,12 +1481,12 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				//了承通知を作成、及び送信
 				ID targetID = arInfo.getGlobalTargetID();
 				String approvalMsg = "approval";
-				communicate(targetID,approvalMsg,keyList.indexOf(tmpSecKey));
+				communicate(targetID,approvalMsg,0,keyList.indexOf(tmpSecKey));
 				config.globalSb.append("了承通知を送信しました\n");
 				config.setRejectID(rejectNode.getID());
 				this.senderMap.remove(targetID);
 				this.senderProcessMap.remove(arInfo.getPrimaryKey());
-				construct(targetID,2);
+				construct(targetID,2,(Integer)contents[C.MESSAGE_END_TIME]);
 				config.globalSb.append("匿名路再構築完了\n");
 				break;
 			case C.TYPE_COMMUNICATION_RELAY :
@@ -1477,16 +1518,16 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				config.setRelaySendNode(constructNumber, tmpSecKey1, tmpTag);
 				//フラグ操作をする必要がある
 				//フラグじゃなくてもいいけど、変更ノードの情報を登録する必要あり
-				config.globalSb.append("recive Message : "+tmpTag+"\n"+"constructNumber : "+constructNumber+"\n");
+				//config.globalSb.append("recive Message : "+tmpTag+"\n"+"constructNumber : "+constructNumber+"\n");
 				//了承通知を作成、及び送信
 				String approvalMsg1 = "approval";
-				communicate(arInfo.getGlobalTargetID(),approvalMsg1,keyList.indexOf(tmpSecKey1));
+				communicate(arInfo.getGlobalTargetID(),approvalMsg1,0,keyList.indexOf(tmpSecKey1));
 				config.globalSb.append("了承通知を送信しました\n");
 				break;
 			}
-			config.globalSb.append("送信先（受信者）からの返信を受け取りました\n");
+			//config.globalSb.append("送信先（受信者）からの返信を受け取りました\n");
 
-			config.globalSb.append("reciveMessageAsSender start\n");
+			//config.globalSb.append("reciveMessageAsSender start\n");
 		}
 		catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -1498,15 +1539,15 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	/*
 	 * 中継ノード、または受信ノードとしてメッセージを受け取った場合
 	 */
-	private void receiveMessageAsRelay(Message msg) {
+	private void receiveMessageAsRelay(Message msg,long startTime) {
 		try {
-			config.globalSb.append("receiveMessageAsRelay start\n");
+			//config.globalSb.append("receiveMessageAsRelay start\n");
 			Serializable[] contents = msg.getContents();
 			Integer key = (Integer) contents[C.MESSAGE_PRIMALKEY];
-			config.globalSb.append("1");
+			//config.globalSb.append("1");
 			RelayProcessSet value = relayProcessMap.get(key);
 			int constructNumber = value.getNumber();
-			config.globalSb.append("2");
+			//config.globalSb.append("2");
 			//廣瀬が変更 11/29
 			commFlag flag = commFlag.Permit;
 			try{
@@ -1514,42 +1555,48 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			} catch(Exception e){
 				//flag = commFlag.Error;	
 			}
-			config.globalSb.append("3\n");
+			//config.globalSb.append("3\n");
 			switch(flag){
 			case Permit : // 通常の中継
-				config.globalSb.append("permit\n");
-				ordinaryCommunicateMessage(msg,flag);
+				//config.globalSb.append("permit\n");
+				ordinaryCommunicateMessage(msg,flag,startTime);
 				break;
 				
 			case Relay : // 中継のみ許可
-				config.globalSb.append("relay\n");
+				//config.globalSb.append("relay\n");
 				//変更通知を作成しているかを確認
 				if(!(config.checkCommFlag(constructNumber))){
-					config.globalSb.append("変更通知作成前 \n");
+					//config.globalSb.append("変更通知作成前 \n");
 					//変更通知作成して通常通りの中継も行う
 					config.setOldCommFlag(constructNumber);
 					communicateChange(msg,flag);
-					ordinaryCommunicateMessage(msg,flag);
+					ordinaryCommunicateMessage(msg,flag,startTime);
 					
 				}else{
-					config.globalSb.append("変更通知作成後 \n");
+					//config.globalSb.append("変更通知作成後 \n");
 					//了承通知を受信しているかを確認
 					if(config.getApprovalChangeFlag(constructNumber)){
-						config.globalSb.append("了承通知受信後 \n");
+						//config.globalSb.append("了承通知受信後 \n");
 						//受信していたら識別タグを読み取り次のノードへ送信
 						int distinctionTag = (Integer) contents[C.MESSAGE_DISTINCTION_TAG];
 						MessagingAddress org = getNeighberAddress(msg.getSource().getID());
 						MessagingAddress nextNode = config.getNextNodeAddress(distinctionTag, org);
+						
+						//TimeCount[] aTime= (TimeCount[]) contents[C.MESSAGE_TIMECOUNT];
+						//int size =(Integer)contents[C.MESSAGE_SIZE];
+						//aTime[size++]=new TimeCount(startTime,System.currentTimeMillis());
+						long toTime = (Long)contents[C.MESSAGE_TO_TIME];
 						Message newMessage = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), 
-								(byte[]) contents[C.MESSAGE_BODY], value.getPrimalKey(), distinctionTag);
+								(byte[]) contents[C.MESSAGE_BODY], value.getPrimalKey(), distinctionTag,
+								(Long)contents[C.MESSAGE_START_TIME],toTime+System.currentTimeMillis()-startTime,(Integer)contents[C.MESSAGE_END_TIME]);
 						//Message newMessage = new Message(this.getSelfIDAddressPair(),Tag.RELAY.getNumber(),contents);
-						config.globalSb.append("org address :" + org.toString() + "\n");
-						config.globalSb.append("just send to dest : " + nextNode.toString()+ "\n");
+						//config.globalSb.append("org address :" + org.toString() + "\n");
+						//config.globalSb.append("just send to dest : " + nextNode.toString()+ "\n");
 						sender.send(nextNode, newMessage);
 					}else{
-						config.globalSb.append("了承通知受信前 \n");
+						//config.globalSb.append("了承通知受信前 \n");
 						//受信していないなら通常通りの中継
-						ordinaryCommunicateMessage(msg,flag);
+						ordinaryCommunicateMessage(msg,flag,startTime);
 					}
 				}
 				break;
@@ -1562,7 +1609,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 					config.setOldCommFlag(constructNumber);
 					communicateChange(msg,flag);
 					
-					ordinaryCommunicateMessage(msg,flag);
+					ordinaryCommunicateMessage(msg,flag,startTime);
 					
 				}else{
 					//了承通知を受信しているかを確認
@@ -1571,12 +1618,12 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 						config.decrementConstructNumber();
 					}else{
 						//受信していないなら通常通りの中継
-						ordinaryCommunicateMessage(msg,flag);
+						ordinaryCommunicateMessage(msg,flag,startTime);
 					}
 				}
 				break;
 			}
-			config.globalSb.append("receiveMessageAsRelay end\n");
+			//config.globalSb.append("receiveMessageAsRelay end\n");
 		}
 		catch (Exception e) {
 			// TODO Auto-generated catch block
@@ -1589,11 +1636,12 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	 * 匿名路を構築した後に匿名通信を行うための関数
 	 */
 	@Override
-	public boolean communicate(ID targetID, Object mail) {
+	public boolean communicate(ID targetID, Object mail,int j) {
+		config.globalRelayTime=System.currentTimeMillis();
 		Integer mainKey = this.senderMap.get(targetID);
 		
-		config.globalSb.append("\ncommunicate start\n");
-		config.globalSb.append("send Message : "+mail+"\n");
+		//config.globalSb.append("\ncommunicate start\n");
+		//config.globalSb.append("send Message : "+mail+"\n");
 		AnonymousRouteInfo arInfo = this.senderProcessMap.get(mainKey);
 		int constructNumber;
 		int distinctionTag=-1;
@@ -1605,10 +1653,11 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			config.globalSb.append("mainkey : "+mainKey+"\n");
 			config.globalSb.append("targetID : "+targetID+"\n");
 		}
-		config.globalSb.append(arInfo.toKeyListString());
+		//config.globalSb.append(arInfo.toKeyListString());
 		ArrayList<SecretKey> keyList = arInfo.getKeyList();
 		byte[] byteMail;
 		try {
+			config.globalRelayMakeMessageStartTime=System.currentTimeMillis();
 			byteMail = MyUtility.object2Bytes(mail);
 			// 中継ノードとの共通鍵で暗号化
 			for (int i = keyList.size() - 1; i >= 0; i--) {
@@ -1616,11 +1665,12 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				//中継のみ行うノードが含まれていた場合、処理を変更
 				if(config.checkRelayID(constructNumber, secKey)){
 					distinctionTag = config.getRelayTag(constructNumber, secKey); 
-					config.globalSb.append("distinctionTag : "+ distinctionTag+"\n");
+					//config.globalSb.append("distinctionTag : "+ distinctionTag+"\n");
 				}else{
 					byteMail = CipherTools.encryptDataPadding(byteMail, secKey);
 				}
 			}
+			config.globalRelayMakeMessageResultTime=System.currentTimeMillis()-config.globalRelayMakeMessageStartTime;
 			// 直接の送信者のための主キーを取得
 			Integer primalKey = arInfo.getPrimaryKey();
 			
@@ -1628,11 +1678,13 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			ID localTargetID = arInfo.getLocalTargetID();
 			MessagingAddress dest = getNeighberAddress(localTargetID);
 			
+			//config.arrayTime[config.sizeArray++]=new TimeCount(config.globalRelayTime,System.currentTimeMillis());
 			// メッセージ作成
-			Message msg = DHTMessageFactory.getCommunicateMessage(this.getSelfIDAddressPair(), byteMail, primalKey,distinctionTag);
+			Message msg = DHTMessageFactory.getCommunicateMessage(this.getSelfIDAddressPair(), byteMail, primalKey,distinctionTag,
+					config.globalRelayTime,System.currentTimeMillis()-config.globalRelayTime,j);
 			sender.send(dest, msg);
 
-			config.globalSb.append("send mainkey : " + mainKey + "\n");
+			//config.globalSb.append("send mainkey : " + mainKey + "\n");
 		}
 		catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -1641,7 +1693,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			config.globalSb.append(e.toString());
 		}
 		
-		config.globalSb.append("communicate end\n");
+		//config.globalSb.append("communicate end\n");
 		return true;
 	}
 
@@ -1649,23 +1701,23 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	/*
 	 * 匿名路を構築した後に匿名路の途中までメッセージを送信する場合に使用する関数
 	 */
-	public boolean communicate(ID targetID, Object mail,int number) {
+	public boolean communicate(ID targetID, Object mail,int j,int number) {
 		Integer mainKey = this.senderMap.get(targetID);
 		config.globalSb.append("communicate change message send start\n");
 		AnonymousRouteInfo arInfo = this.senderProcessMap.get(mainKey);
 		int distinctionTag = -1;
 		ArrayList<SecretKey> keyList = arInfo.getKeyList();
-		config.globalSb.append("1");
+		//config.globalSb.append("1");
 		byte[] byteMail;
 		try {
 			byteMail = MyUtility.object2Bytes(mail);
-			config.globalSb.append("2");
+			//config.globalSb.append("2");
 			// 中継ノードとの共通鍵で暗号化
 			for (int i = number; i >= 0; i--) {
 				SecretKey secKey = keyList.get(i);
 				byteMail = CipherTools.encryptDataPadding(byteMail, secKey);
 			}
-			config.globalSb.append("3");
+			//config.globalSb.append("3");
 			// 直接の送信者のための主キーを取得
 			Integer primalKey = arInfo.getPrimaryKey();
 
@@ -1856,14 +1908,22 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	 * @author hirose
 	 * 
 	 */
-	private void ordinaryCommunicateMessage(Message msg,commFlag flag){
+	private void ordinaryCommunicateMessage(Message msg,commFlag flag,long startTime){
 		try {
-			config.globalSb.append("\nordinary commincate message start\n");
+			//config.globalSb.append("\nordinary commincate message start\n");
 			Serializable[] contents = msg.getContents();
 			byte[] body = (byte[]) contents[C.MESSAGE_BODY];
 			Integer key = (Integer) contents[C.MESSAGE_PRIMALKEY];
 			int type = (Integer) contents[C.MESSAGE_TYPE];
 			int distinctionTag = (Integer) contents[C.MESSAGE_DISTINCTION_TAG];
+			long toTime = 0;
+			try{
+				toTime = (Long)contents[C.MESSAGE_TO_TIME];
+			}catch(Exception e){
+				config.globalSb.append("totime error\n");
+			}
+			//TimeCount[] aTime = (TimeCount[]) contents[C.MESSAGE_TIMECOUNT];
+		//	int size = (Integer)contents[C.MESSAGE_SIZE];
 			
 			RelayProcessSet value = relayProcessMap.get(key);
 			SecretKey secKey = value.getSecretKey();
@@ -1890,10 +1950,21 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 
 			// もしも自身が受信者だった場合
 			if (dest == null) {
-				config.globalSb.append("I'm receiver.");
+				//config.globalSb.append("I'm receiver.");
 				Object mail = MyUtility.bytes2Object(body);
 				if (mail instanceof String) {
-					config.globalSb.append("mail : " + mail.toString()+"\n");
+					//aTime[size++]=new TimeCount(startTime,System.currentTimeMillis());
+					long endTime = System.currentTimeMillis();
+					
+					long trueConstructTime=endTime-(Long)contents[C.MESSAGE_START_TIME];
+					toTime+=endTime-startTime;
+					long trueCommunicationTime=trueConstructTime-toTime;
+					writeFile(filePath1,Long.toString(trueConstructTime),encType);
+					writeFile(filePath2,Long.toString(trueCommunicationTime),encType);
+					writeFile(filePath3,Long.toString(toTime),encType);
+					
+					startTime = System.currentTimeMillis();
+					//config.globalSb.append("mail : " + mail.toString()+"\n");
 					// 返信のための処理
 					// 直接の送信先入手
 					IDAddressPair addr = msg.getSource();
@@ -1903,19 +1974,25 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 					String reply = mail.toString() + " ack";
 					body = MyUtility.object2Bytes(reply);
 					body = CipherTools.encryptDataPadding(body, secKey);
-					msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, key,distinctionTag);
-					config.globalSb.append("send key hash : " + key + "\n");
+					
+					//aTime[size++]=new TimeCount(startTime,System.currentTimeMillis());
+					msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, key,distinctionTag,
+							startTime,System.currentTimeMillis()-startTime,(Integer)contents[C.MESSAGE_END_TIME]);
+					//config.globalSb.append("send key hash : " + key + "\n");
 					// 送信
-					config.globalSb.append("\n"+"just send to sender : " + dest2.toString()+"\n");
+					//config.globalSb.append("\n"+"just send to sender : " + dest2.toString()+"\n");
 					sender.send(dest2, msg);
 				}
 				return;
 			}
+			long endTime = System.currentTimeMillis();
 			//受信したメッセージのタイプによって送信方法の変更
 			switch(type){
 			case C.TYPE_COMMUNICATION : 
-				config.globalSb.append("Communicate type : communicate \n");
-				msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, primalKey,distinctionTag);
+				//config.globalSb.append("Communicate type : communicate \n");
+				//aTime[size++]=new TimeCount(startTime,endTime);
+				msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, primalKey,distinctionTag,
+						(Long)contents[C.MESSAGE_START_TIME],toTime+endTime-startTime,(Integer)contents[C.MESSAGE_END_TIME]);
 				sender.send(dest, msg);
 				break;
 				
@@ -1947,9 +2024,10 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 
 				break;
 			}
-			config.globalSb.append("send key : " + primalKey +"\n");
-			config.globalSb.append("\n"+"just send to dest : " + dest.toString()+"\n");
-			config.globalSb.append("\nordinary commincate message end\n");
+			//config.globalSb.setLength(0);
+			//config.globalSb.append("send key : " + primalKey +"\n");
+			//config.globalSb.append("\n"+"just send to dest : " + dest.toString()+"\n");
+			//config.globalSb.append("\nordinary commincate message end\n");
 		}
 		catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -1971,12 +2049,15 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	 * @author hirose
 	 * 
 	 */
-	private void ordinaryConstructMessage(Message recvMsg){
+	private void ordinaryConstructMessage(Message recvMsg,long startTime){
 		try {
-			config.globalSb.append("ordinaryConstructMessage\n");
+			//config.globalSb.append("ordinaryConstructMessage\n");
 			Serializable[] contents = recvMsg.getContents();
 			byte[] encHeader = (byte[]) contents[C.MESSAGE_HEADER];
-			config.globalSb.append("encHeader : "+encHeader+"\n");
+			//TimeCount[] aTime = (TimeCount[]) contents[C.MESSAGE_TIMECOUNT];
+			//int size = (Integer)contents[C.MESSAGE_SIZE];
+			long toTime = (Long)contents[C.MESSAGE_TO_TIME];
+			//config.globalSb.append("encHeader : "+encHeader+"\n");
 			
 			// 自身の持つ秘密鍵で復号
 			byte[] decHeader = CipherTools.decryptByIBEPadding(encHeader, myPrivateKey);
@@ -1993,7 +2074,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 
 			// 自身が受信者だった場合の処理（次のIDが無ければ受信者）
 			if (nextID == null) {
-				config.globalSb.append("\nI'm a actual receiver");
+				//config.globalSb.append("\nI'm a actual receiver");
 
 				// 送信者側への処理のための情報を保存
 				IDAddressPair src = recvMsg.getSource();
@@ -2004,14 +2085,39 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				// 復号するための情報を保存
 				RelayProcessSet toReceiverSide = new RelayProcessSet(null, secKey, sendPrimalKey, C.DECRYPT , config.getConstructNumber());
 				relayProcessMap.put(recvPrimalKey, toReceiverSide);
-
+				//aTime[size++]=new TimeCount(startTime,System.currentTimeMillis());
+				long endTime = System.currentTimeMillis();
+				int i= (Integer)contents[C.MESSAGE_END_TIME];
+				config.globalSb.append("int i : "+i+"\n");
+				
+				long trueConstructTime=endTime-(Long)contents[C.MESSAGE_START_TIME];
+				toTime+=endTime-startTime;
+				long trueCommunicationTime=trueConstructTime-toTime;
+				writeFile(filePath1,Long.toString(trueConstructTime),encType);
+				writeFile(filePath2,Long.toString(trueCommunicationTime),encType);
+				writeFile(filePath3,Long.toString(toTime),encType);
+				
+				startTime = System.currentTimeMillis();
+				// メッセージ作成
+				String reply = "construct complete";
+				byte[] body = MyUtility.object2Bytes(reply);
+				body = CipherTools.encryptDataPadding(body, secKey);
+				//aTime[size++]=new TimeCount(startTime,System.currentTimeMillis());
+				recvMsg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, recvPrimalKey,-1,
+						startTime,System.currentTimeMillis()-startTime,i);
+				//config.globalSb.append("send key hash : " + recvPrimalKey + "\n");
+				// 送信
+				//config.globalSb.append("\n"+"just send to sender : " + org.toString()+"\n");
+				sender.send(org, recvMsg);
 				return;
 			}
-			Message sendMsg = DHTMessageFactory.getConstructMessage(getSelfIDAddressPair(), nextHeader);
+			//aTime[size++]=new TimeCount(startTime,System.currentTimeMillis());
+			Message sendMsg = DHTMessageFactory.getConstructMessage(getSelfIDAddressPair(), nextHeader,
+					(Long)contents[C.MESSAGE_START_TIME],toTime+System.currentTimeMillis()-startTime,(Integer)contents[C.MESSAGE_END_TIME]);
 			MessagingAddress dest = getNeighberAddress(nextID);
 			sender.send(dest, sendMsg);
 			
-			config.globalSb.append("\n"+"just send to dest : " + dest.toString()+"\n");
+			//config.globalSb.append("\n"+"just send to dest : " + dest.toString()+"\n");
 
 			// 匿名通信を行う際の処理情報を保存
 			IDAddressPair src = recvMsg.getSource();
@@ -2020,12 +2126,13 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			// 送信者側への処理のための情報を保存
 			RelayProcessSet toSenderSide = new RelayProcessSet(org, secKey, recvPrimalKey, C.ENCRYPT , config.getConstructNumber());
 			relayProcessMap.put(sendPrimalKey, toSenderSide);
-			config.globalSb.append("nextHeader : " + nextHeader+"\n");
-			config.globalSb.append("decHeader : " + decHeader);
+			//config.globalSb.append("nextHeader : " + nextHeader+"\n");
+			//config.globalSb.append("decHeader : " + decHeader);
 			
 			// 受信者側への処理のための情報を保存
 			RelayProcessSet toReceiverSide = new RelayProcessSet(dest, secKey, sendPrimalKey, C.DECRYPT , config.getConstructNumber());
 			relayProcessMap.put(recvPrimalKey, toReceiverSide);
+			config.globalSb.setLength(0);
 		}
 		catch (ClassNotFoundException e){
 			config.globalSb.append("ClassNotFoundException\n"+e.toString()+"\n");
@@ -2040,4 +2147,35 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			e.printStackTrace();
 		}
 	}
+	
+	private final String filePath1="/data/local/log/resultConstruct.txt";
+	private final String filePath2="/data/local/log/resultCommunication.txt";
+	private final String filePath3="/data/local/log/resultToTime.txt";
+	private final String encType = "UTF-8"; 
+	/**
+	   * ファイル書き込み処理（String文字列⇒ファイル）
+	   * @param sFilepath　書き込みファイルパス
+	   * @param sOutdata　ファイル出力するデータ
+	   * @param sEnctype　文字エンコード
+	   */
+	  public static void writeFile(String sFilepath, String sOutdata, String sEnctype){
+
+		  BufferedWriter bufferedWriterObj = null;
+		  try {
+			  //ファイル出力ストリームの作成
+			  bufferedWriterObj = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(sFilepath,true), sEnctype));
+			  
+			  bufferedWriterObj.write(sOutdata);
+			  bufferedWriterObj.flush();
+			  
+		  } catch (Exception e) {
+			  //Log.d("CommonFile.writeFile", e.getMessage());
+		  } finally {
+			  try {
+				  if( bufferedWriterObj != null) bufferedWriterObj.close();
+			  } catch (IOException e2) {
+				 // Log.d("CommonFile.writeFile", e2.getMessage());
+			  }
+		  }
+	  }
 }

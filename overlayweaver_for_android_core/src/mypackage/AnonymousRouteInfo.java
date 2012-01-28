@@ -218,7 +218,7 @@ public class AnonymousRouteInfo {
 
 			// 中継者が受け取る情報を作成
 			nextID = receiverID;
-			config.globalSb.append("\nbyteHeader : "+byteHeader+"\nnextID : "+nextID+"\nnextHeader : "+nextHeader+"\n");
+			//config.globalSb.append("\nbyteHeader : "+byteHeader+"\nnextID : "+nextID+"\nnextHeader : "+nextHeader+"\n");
 			for (int index = this.relayInfo.size() - 1; index >= 0; index--) {
 				LocalRouteInfo localInfo = relayInfo.get(index);
 				secKey = localInfo.getSharedKey();
@@ -230,7 +230,7 @@ public class AnonymousRouteInfo {
 				// 中継者が復号できる形で暗号化
 				nextID = localInfo.getNodeID();
 				nextHeader = CipherTools.encryptByIBEPadding(byteHeader, nextID.toString(), masterKey);
-				config.globalSb.append("\nbyteHeader : "+byteHeader+"\nnextID : "+nextID+"\nnextHeader : "+nextHeader+"\n");
+				//config.globalSb.append("\nbyteHeader : "+byteHeader+"\nnextID : "+nextID+"\nnextHeader : "+nextHeader+"\n");
 			}
 			AnonymousMessage ret = new AnonymousMessage();
 			ret.setHeader(nextHeader);

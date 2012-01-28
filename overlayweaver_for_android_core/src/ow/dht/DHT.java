@@ -295,7 +295,7 @@ public interface DHT<V extends Serializable> {
 	 * @return 匿名路構築に成功した場合はtrueを、失敗した場合はfalseを返す
 	 * @throws Exception
 	 */
-	public boolean construct(ID targetID, int relayAmount);
+	public boolean construct(ID targetID, int relayAmount,int i);
 	
 	/**
 	 * 匿名通信を行うための関数。
@@ -317,7 +317,7 @@ public interface DHT<V extends Serializable> {
 	 *            実際の送信先に届ける内容
 	 * @return 匿名通信に成功したかどうか （といっても全体は分からんよ、次のノードに送れたかどうかグライだよ、しかたないね〜）
 	 */
-	public boolean communicate(ID targetID, Object mail);
+	public boolean communicate(ID targetID, Object mail,int i);
 	
 	/**
 	 * 匿名路上の隣接するノードが離脱したときに呼ばれる関数。

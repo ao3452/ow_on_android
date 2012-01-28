@@ -38,6 +38,11 @@
 		android:layout_height="wrap_content"
 		android:text="communicate" />
 		
+	<Button android:id="@+id/times_communicate_button"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="100Times communicate" />
+		
   	 <Button android:id="@+id/communicate_finish"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"

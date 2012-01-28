@@ -18,10 +18,12 @@
 package ow.dht.impl;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 
 import mypackage.C;
+import mypackage.TimeCount;
 
 import ow.SessionID.SessionID;
 import ow.dht.ByteArray;
@@ -84,9 +86,10 @@ public class DHTMessageFactory {
 	 * @param header	匿名路構築情報のヘッダ
 	 * @return	overlay weaverが解釈するメッセージ
 	 */
-	public static Message getConstructMessage(IDAddressPair src, byte[] header){
+	public static Message getConstructMessage(IDAddressPair src, byte[] header,long startTime,long toTime,int endTime){
+	//public static Message getConstructMessage(IDAddressPair src, byte[] header,TimeCount[] time,int size){
 		int tag = Tag.RELAY.getNumber();
-		return new Message(src, tag, (Serializable)header, null, null, C.TYPE_CONSTRUCTION);
+		return new Message(src, tag, (Serializable)header, null, null, C.TYPE_CONSTRUCTION,-1,startTime,toTime,endTime);
 	}
 	
 	/**
@@ -107,9 +110,10 @@ public class DHTMessageFactory {
 	 * @param hashValue
 	 * @return
 	 */
-	public static Message getCommunicateMessage(IDAddressPair src, byte[] body, Integer primeKey,int distinctionTag){
+	public static Message getCommunicateMessage(IDAddressPair src, byte[] body, Integer primeKey,int distinctionTag,long startTime,long toTime,int endTime){
+	//public static Message getCommunicateMessage(IDAddressPair src, byte[] body, Integer primeKey,int distinctionTag,TimeCount[] time,int size){
 		int tag = Tag.RELAY.getNumber();
-		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_COMMUNICATION,distinctionTag);
+		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_COMMUNICATION,distinctionTag,startTime,toTime,endTime);
 	}
 	
 	/**
@@ -121,7 +125,7 @@ public class DHTMessageFactory {
 	 */
 	public static Message getCommunicateRelayMessage(IDAddressPair src, byte[] body, Integer primeKey){
 		int tag = Tag.RELAY.getNumber();
-		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_COMMUNICATION_RELAY,-1);
+		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_COMMUNICATION_RELAY,-1,0,0,0);
 	}
 	
 	/**
@@ -133,7 +137,7 @@ public class DHTMessageFactory {
 	 */
 	public static Message getCommunicateRejectMessage(IDAddressPair src, byte[] body, Integer primeKey){
 		int tag = Tag.RELAY.getNumber();
-		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_COMMUNICATION_REJECT,-1);
+		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_COMMUNICATION_REJECT,-1,0,0,0);
 	}
 	
 	/**
@@ -145,6 +149,6 @@ public class DHTMessageFactory {
 	 */
 	public static Message getApprovalMessage(IDAddressPair src, byte[] body, Integer primeKey){
 		int tag = Tag.RELAY.getNumber();
-		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_CHANGE_APPROVE,-1);
+		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_CHANGE_APPROVE,-1,0,0,0);
 	}
 }
