@@ -57,6 +57,7 @@ import ow.dht.ByteArray;
 import ow.dht.DHT;
 import ow.dht.DHTConfiguration;
 import ow.dht.DHTConfiguration.commFlag;
+import ow.dht.DHTConfiguration.switchNumber;
 
 
 import ow.dht.ValueInfo;
@@ -1325,13 +1326,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		private void constructProcess(Message recvMsg,long startTime) {
 			//config.globalSb.append("\nconstructProcess\n");
 			//廣瀬が変更 11/29
-			commFlag flag = commFlag.Permit;
-			try{
-				flag = config.getCommunicateMethodFlag(config.getConstructNumber());
-			} catch(Exception e){
-				config.setCommunicateMethodFlag(commFlag.Permit, config.getConstructNumber());
-				//flag = commFlag.Error;	
-			}
+			commFlag flag = config.getCommunicateMethodFlag(config.getConstructNumber());
+
 			switch(flag){
 			case Permit : // 通常の中継
 				//config.globalSb.append("construct permit start\n");
@@ -1549,12 +1545,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			int constructNumber = value.getNumber();
 			//config.globalSb.append("2");
 			//廣瀬が変更 11/29
-			commFlag flag = commFlag.Permit;
-			try{
-				flag = config.getCommunicateMethodFlag(constructNumber);
-			} catch(Exception e){
-				//flag = commFlag.Error;	
-			}
+			commFlag flag = config.getCommunicateMethodFlag(constructNumber);
+
 			//config.globalSb.append("3\n");
 			switch(flag){
 			case Permit : // 通常の中継
@@ -1564,63 +1556,121 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				
 			case Relay : // 中継のみ許可
 				//config.globalSb.append("relay\n");
-				//変更通知を作成しているかを確認
-				if(!(config.checkCommFlag(constructNumber))){
-					//config.globalSb.append("変更通知作成前 \n");
-					//変更通知作成して通常通りの中継も行う
-					config.setOldCommFlag(constructNumber);
+				switch(config.getSwitchFlag(constructNumber)){
+				case NOT_CHENGE_FLAG :
+					//config.globalSb.append("Not Chenge Flag \n1\n");
+					//config.setOldCommFlag(constructNumber);
 					communicateChange(msg,flag);
+					//config.globalSb.append("2\n");
 					ordinaryCommunicateMessage(msg,flag,startTime);
-					
-				}else{
-					//config.globalSb.append("変更通知作成後 \n");
-					//了承通知を受信しているかを確認
-					if(config.getApprovalChangeFlag(constructNumber)){
-						//config.globalSb.append("了承通知受信後 \n");
-						//受信していたら識別タグを読み取り次のノードへ送信
-						int distinctionTag = (Integer) contents[C.MESSAGE_DISTINCTION_TAG];
-						MessagingAddress org = getNeighberAddress(msg.getSource().getID());
-						MessagingAddress nextNode = config.getNextNodeAddress(distinctionTag, org);
-						
-						//TimeCount[] aTime= (TimeCount[]) contents[C.MESSAGE_TIMECOUNT];
-						//int size =(Integer)contents[C.MESSAGE_SIZE];
-						//aTime[size++]=new TimeCount(startTime,System.currentTimeMillis());
-						long toTime = (Long)contents[C.MESSAGE_TO_TIME];
-						Message newMessage = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), 
-								(byte[]) contents[C.MESSAGE_BODY], value.getPrimalKey(), distinctionTag,
-								(Long)contents[C.MESSAGE_START_TIME],toTime+System.currentTimeMillis()-startTime,(Integer)contents[C.MESSAGE_END_TIME]);
-						//Message newMessage = new Message(this.getSelfIDAddressPair(),Tag.RELAY.getNumber(),contents);
-						//config.globalSb.append("org address :" + org.toString() + "\n");
-						//config.globalSb.append("just send to dest : " + nextNode.toString()+ "\n");
-						sender.send(nextNode, newMessage);
-					}else{
-						//config.globalSb.append("了承通知受信前 \n");
-						//受信していないなら通常通りの中継
-						ordinaryCommunicateMessage(msg,flag,startTime);
-					}
+					//config.globalSb.append("3\n");
+					config.setSwitchFlag(constructNumber, switchNumber.NOT_APPROVE_FLAG);
+					//config.globalSb.append("4\n");
+					break;
+				case NOT_APPROVE_FLAG :
+					//config.globalSb.append("Not Approve Flag \n1\n");
+					//config.globalSb.append("了承通知受信前 \n");
+					//受信していないなら通常通りの中継
+					ordinaryCommunicateMessage(msg,flag,startTime);
+					break;
+				case END_APPROVE_FLAG :
+					//config.globalSb.append("End Approve Flag \n1\n");
+					int distinctionTag = (Integer) contents[C.MESSAGE_DISTINCTION_TAG];
+					MessagingAddress org = getNeighberAddress(msg.getSource().getID());
+					MessagingAddress nextNode = config.getNextNodeAddress(distinctionTag, org);
+					//config.globalSb.append("2\n");
+					//TimeCount[] aTime= (TimeCount[]) contents[C.MESSAGE_TIMECOUNT];
+					//int size =(Integer)contents[C.MESSAGE_SIZE];
+					//aTime[size++]=new TimeCount(startTime,System.currentTimeMillis());
+					long toTime = (Long)contents[C.MESSAGE_TO_TIME];
+					Message newMessage = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), 
+							(byte[]) contents[C.MESSAGE_BODY], value.getPrimalKey(), distinctionTag,
+							(Long)contents[C.MESSAGE_START_TIME],toTime+System.currentTimeMillis()-startTime,(Integer)contents[C.MESSAGE_END_TIME]);
+					//config.globalSb.append("3\n");
+					//Message newMessage = new Message(this.getSelfIDAddressPair(),Tag.RELAY.getNumber(),contents);
+					//config.globalSb.append("org address :" + org.toString() + "\n");
+					//config.globalSb.append("just send to dest : " + nextNode.toString()+ "\n");
+					sender.send(nextNode, newMessage);
+					break;
+				default :
+					break;
 				}
+//				//config.globalSb.append("relay\n");
+//				//変更通知を作成しているかを確認
+//				if(!(config.checkCommFlag(constructNumber))){
+//					//config.globalSb.append("変更通知作成前 \n");
+//					//変更通知作成して通常通りの中継も行う
+//					config.setOldCommFlag(constructNumber);
+//					communicateChange(msg,flag);
+//					ordinaryCommunicateMessage(msg,flag,startTime);
+//					
+//				}else{
+//					//config.globalSb.append("変更通知作成後 \n");
+//					//了承通知を受信しているかを確認
+//					if(config.getApprovalChangeFlag(constructNumber)){
+//						//config.globalSb.append("了承通知受信後 \n");
+//						//受信していたら識別タグを読み取り次のノードへ送信
+//						int distinctionTag = (Integer) contents[C.MESSAGE_DISTINCTION_TAG];
+//						MessagingAddress org = getNeighberAddress(msg.getSource().getID());
+//						MessagingAddress nextNode = config.getNextNodeAddress(distinctionTag, org);
+//						
+//						//TimeCount[] aTime= (TimeCount[]) contents[C.MESSAGE_TIMECOUNT];
+//						//int size =(Integer)contents[C.MESSAGE_SIZE];
+//						//aTime[size++]=new TimeCount(startTime,System.currentTimeMillis());
+//						long toTime = (Long)contents[C.MESSAGE_TO_TIME];
+//						Message newMessage = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), 
+//								(byte[]) contents[C.MESSAGE_BODY], value.getPrimalKey(), distinctionTag,
+//								(Long)contents[C.MESSAGE_START_TIME],toTime+System.currentTimeMillis()-startTime,(Integer)contents[C.MESSAGE_END_TIME]);
+//						//Message newMessage = new Message(this.getSelfIDAddressPair(),Tag.RELAY.getNumber(),contents);
+//						//config.globalSb.append("org address :" + org.toString() + "\n");
+//						//config.globalSb.append("just send to dest : " + nextNode.toString()+ "\n");
+//						sender.send(nextNode, newMessage);
+//					}else{
+//						//config.globalSb.append("了承通知受信前 \n");
+//						//受信していないなら通常通りの中継
+//						ordinaryCommunicateMessage(msg,flag,startTime);
+//					}
+//				}
 				break;
 				
 			case Reject : // 中継拒否
-				config.globalSb.append("reject\n");
-				//変更通知を作成しているかを確認
-				if(!(config.checkCommFlag(constructNumber))){
-					//変更通知作成して通常通りの中継も行う
-					config.setOldCommFlag(constructNumber);
+				switch(config.getSwitchFlag(constructNumber)){
+				case NOT_CHENGE_FLAG :
 					communicateChange(msg,flag);
-					
 					ordinaryCommunicateMessage(msg,flag,startTime);
-					
-				}else{
-					//了承通知を受信しているかを確認
-					if(config.getApprovalChangeFlag(constructNumber)){
-						//受信していたらconstructNumberを減らす
-						config.decrementConstructNumber();
-					}else{
-						//受信していないなら通常通りの中継
-						ordinaryCommunicateMessage(msg,flag,startTime);
-					}
+					config.setSwitchFlag(constructNumber, switchNumber.NOT_APPROVE_FLAG);
+					break;
+				case NOT_APPROVE_FLAG :
+					//config.globalSb.append("了承通知受信前 \n");
+					//受信していないなら通常通りの中継
+					ordinaryCommunicateMessage(msg,flag,startTime);
+					break;
+				case END_APPROVE_FLAG :
+					//受信していたらconstructNumberを減らす
+					config.decrementConstructNumber();
+					break;
+				default:
+					break;
 				}
+//				config.globalSb.append("reject\n");
+//				//変更通知を作成しているかを確認
+//				if(!(config.checkCommFlag(constructNumber))){
+//					//変更通知作成して通常通りの中継も行う
+//					config.setOldCommFlag(constructNumber);
+//					communicateChange(msg,flag);
+//					
+//					ordinaryCommunicateMessage(msg,flag,startTime);
+//					
+//				}else{
+//					//了承通知を受信しているかを確認
+//					if(config.getApprovalChangeFlag(constructNumber)){
+//						//受信していたらconstructNumberを減らす
+//						config.decrementConstructNumber();
+//					}else{
+//						//受信していないなら通常通りの中継
+//						ordinaryCommunicateMessage(msg,flag,startTime);
+//					}
+//				}
 				break;
 			}
 			//config.globalSb.append("receiveMessageAsRelay end\n");
@@ -1628,7 +1678,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 		catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			config.globalSb.append("\nreceiveMessageAsRelay error\n");
+			config.globalSb.append("\nreceiveMessageAsRelay error\n"+e.toString()+"\n");
 		}
 	}
 
@@ -2016,7 +2066,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				try{
 					Object mail = MyUtility.bytes2Object(body);
 					config.globalSb.append("了承通知を受信しました\n");
-					config.setApprovalChangeFlag(true, value.getNumber());
+					config.setSwitchFlag(value.getNumber(), switchNumber.END_APPROVE_FLAG);
+					//config.setApprovalChangeFlag(true, value.getNumber());
 				}catch(Exception e){
 					msg = DHTMessageFactory.getApprovalMessage(getSelfIDAddressPair(), body, primalKey);
 					sender.send(dest, msg);					
@@ -2024,7 +2075,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 
 				break;
 			}
-			//config.globalSb.setLength(0);
+			config.globalSb.setLength(0);
 			//config.globalSb.append("send key : " + primalKey +"\n");
 			//config.globalSb.append("\n"+"just send to dest : " + dest.toString()+"\n");
 			//config.globalSb.append("\nordinary commincate message end\n");

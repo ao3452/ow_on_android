@@ -18,6 +18,9 @@
 package ow.dht;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.crypto.SecretKey;
 
@@ -337,21 +340,18 @@ public class DHTConfiguration {
 //	private ID rejectID[] = new ID[REJECT_NODE_NUMBER];
 	public int getRejectNodeNumber(){ return rejectNodeNumber; }
 	public void setRejectID(ID newID){
-		rejectID.add(rejectNodeNumber++, newID);	
-		//設定以上のリスト登録があった場合、リストの上書きを始める
-		if(REJECT_NODE_NUMBER==rejectNodeNumber){
-			rejectNodeNumber=0;
-		}
+		rejectID.add(newID);	
+		rejectNodeNumber++;
+//		//設定以上のリスト登録があった場合、リストの上書きを始める
+//		if(REJECT_NODE_NUMBER==rejectNodeNumber){
+//			rejectNodeNumber=0;
+//		}
 	}
 	public boolean checkRejectNode(ID checkID){
-		try{
-			if(!(rejectID.indexOf(checkID)==-1))	
+			if(rejectID.indexOf(checkID)!=-1)	
 				return true;
-		
-			return false;
-		}catch (Exception e){
-			return false;
-		}
+			else
+				return false;
 	}
 	
 	//    通信方法変更用のフラグ管理
@@ -361,45 +361,76 @@ public class DHTConfiguration {
 		Reject,//通信拒否
 		Error
 	}
-	private ArrayList<commFlag> communicateMethodFlag = new ArrayList<commFlag>();
+//	private ArrayList<commFlag> communicateMethodFlag = new ArrayList<commFlag>();
+	private Map<Integer,commFlag> communicateMethodFlagMap = Collections.synchronizedMap(new HashMap<Integer, commFlag>());
 	//private commFlag communicateMethodFlag[] = new commFlag[REJECT_NODE_NUMBER];
 	//=commFlag.Permit;
-	public commFlag getCommunicateMethodFlag(int number){ return communicateMethodFlag.get(number); }
+	public commFlag getCommunicateMethodFlag(int number){ 
+		//return communicateMethodFlag.get(number);
+		if(communicateMethodFlagMap.containsKey(number))
+			return communicateMethodFlagMap.get(number);
+		else{
+			setCommunicateMethodFlag(commFlag.Permit, constructNumber);
+			return commFlag.Permit;	
+		}
+		
+	}
 	public void setCommunicateMethodFlag(commFlag newFlag,int number){
 		//commFlag old = communicateMethodFlag.get(number);
-		try{
-			communicateMethodFlag.set(number,newFlag);
-		} catch(Exception e){
-			try{
-				communicateMethodFlag.add(number,newFlag);
-			}catch(IndexOutOfBoundsException e2){
-				communicateMethodFlag.add(newFlag);
-				constructNumber--;
-			}
-		}
+		communicateMethodFlagMap.put(number, newFlag);
+//		try{
+//			communicateMethodFlag.set(number,newFlag);
+//		} catch(Exception e){
+//			try{
+//				communicateMethodFlag.add(number,newFlag);
+//			}catch(IndexOutOfBoundsException e2){
+//				communicateMethodFlag.add(newFlag);
+//				constructNumber--;
+//			}
+//		}
 		//return old;
 	}
 	
-	//変更通知用のフラグ
-	private ArrayList<commFlag> oldCommFlag = new ArrayList<commFlag>();
-	//private commFlag oldCommFlag[] = new commFlag[REJECT_NODE_NUMBER];
-	//=commFlag.Permit;
-	public void setOldCommFlag(int number){
-		try{
-			oldCommFlag.set(number, communicateMethodFlag.get(number));
-		} catch (Exception e){
-			oldCommFlag.add(number,communicateMethodFlag.get(number));
+//	//変更通知用のフラグ
+//	private ArrayList<commFlag> oldCommFlag = new ArrayList<commFlag>();
+//	//private commFlag oldCommFlag[] = new commFlag[REJECT_NODE_NUMBER];
+//	//=commFlag.Permit;
+//	public void setOldCommFlag(int number){
+//		try{
+//			oldCommFlag.set(number, communicateMethodFlag.get(number));
+//		} catch (Exception e){
+//			oldCommFlag.add(number,communicateMethodFlag.get(number));
+//		}
+//	}
+//	public boolean checkCommFlag(int number){
+//		try{
+//			if(communicateMethodFlag.get(number) == oldCommFlag.get(number)){
+//				return true;
+//			}
+//			return false;
+//		} catch (Exception e){
+//			return false;
+//		}
+//	}
+	
+	private Map<Integer, switchNumber> switchFlag=Collections.synchronizedMap(new HashMap<Integer, switchNumber>());;
+	public switchNumber getSwitchFlag(int number){
+		if(switchFlag.containsKey(number)){
+			switchNumber result=switchFlag.get(number);
+			return result;
 		}
+		else
+			return switchNumber.NOT_CHENGE_FLAG;
 	}
-	public boolean checkCommFlag(int number){
-		try{
-			if(communicateMethodFlag.get(number) == oldCommFlag.get(number)){
-				return true;
-			}
-			return false;
-		} catch (Exception e){
-			return false;
-		}
+	
+	public void setSwitchFlag(int number,switchNumber result){
+		switchFlag.put(number, result);
+	}
+	
+	public enum switchNumber{
+		NOT_CHENGE_FLAG,
+		NOT_APPROVE_FLAG,
+		END_APPROVE_FLAG
 	}
 	
 	//了承通知用のフラグ管理
@@ -441,91 +472,119 @@ public class DHTConfiguration {
 	}
 	
 	//中継のみのノード用の変数
-	private ArrayList<RelaySendNode> relaySendNodes = new ArrayList<RelaySendNode>(10);
-	private ArrayList<RelayChangeNode> relayChangeNodes = new ArrayList<RelayChangeNode>(10);
+//	private ArrayList<RelaySendNode> relaySendNodes = new ArrayList<RelaySendNode>(10);
+//	private ArrayList<RelayChangeNode> relayChangeNodes = new ArrayList<RelayChangeNode>(10);
 	//中継のみのノードを保存しておくクラス(別途ファイルを作った方がいいかもしれない)というかMap使った方が楽?
 	//送信者用
-	public class RelaySendNode{
-		private ArrayList<SecretKey> relayKey= new ArrayList<SecretKey>(10);
-		private ArrayList<Integer> relayTag = new ArrayList<Integer>(10);
-		
-		public void setRelayList(SecretKey setKey,int setTag){
-			relayKey.add(setKey);
-			relayTag.add(setTag);
-		}
-		
-		public Integer getRelayTag(SecretKey setKey){
-			return relayTag.get(relayKey.indexOf(setKey));
-		}
-		
-	}
+	private Map<Integer, Map<SecretKey,Integer>> relaySendNodeMap=Collections.synchronizedMap(new HashMap<Integer, Map<SecretKey,Integer>>());
 	public void setRelaySendNode(int number,SecretKey setKey, int setTag){
-		try{
-			relaySendNodes.get(number).setRelayList(setKey, setTag);
-		} catch (Exception e){
-			RelaySendNode tmpRelaySendNode = new RelaySendNode();
-			tmpRelaySendNode.setRelayList(setKey,setTag);
-			relaySendNodes.add(number,tmpRelaySendNode);
-		}
+		Map<SecretKey,Integer> tmpMap =Collections.synchronizedMap(new HashMap<SecretKey,Integer>());;
+		tmpMap.put(setKey,setTag);
+		relaySendNodeMap.put(number, tmpMap);
 	}
 	public Integer getRelayTag(int number,SecretKey setKey){
-		RelaySendNode tmpRelayKey = relaySendNodes.get(number);
-		return tmpRelayKey.getRelayTag(setKey);
+		Map<SecretKey,Integer> tmpMap = relaySendNodeMap.get(number);
+		return tmpMap.get(setKey);
 	}
 	public boolean checkRelayID(int number, SecretKey checkKey){
-		try{
-			RelaySendNode tmpRelayKey = relaySendNodes.get(number);
-			for(SecretKey keyCheker : tmpRelayKey.relayKey){
-				if(checkKey.equals(keyCheker))
-					return true;
-			}
+		if(relaySendNodeMap.containsKey(number)){
+			Map<SecretKey,Integer> tmpMap =relaySendNodeMap.get(number);
+			if(tmpMap.containsKey(checkKey))
+				return true;
+			else
+				return false;
+		}else
 			return false;
-		} catch (Exception e){
-//			globalSb.append("checkRelayID error\n");
-			return false;
-		}
 	}
+//	public class RelaySendNode{
+//		private ArrayList<SecretKey> relayKey= new ArrayList<SecretKey>(10);
+//		private ArrayList<Integer> relayTag = new ArrayList<Integer>(10);
+//		
+//		public void setRelayList(SecretKey setKey,int setTag){
+//			relayKey.add(setKey);
+//			relayTag.add(setTag);
+//		}
+//		
+//		public Integer getRelayTag(SecretKey setKey){
+//			return relayTag.get(relayKey.indexOf(setKey));
+//		}
+//		
+//	}
+//	public void setRelaySendNode(int number,SecretKey setKey, int setTag){
+//		try{
+//			relaySendNodes.get(number).setRelayList(setKey, setTag);
+//		} catch (Exception e){
+//			RelaySendNode tmpRelaySendNode = new RelaySendNode();
+//			tmpRelaySendNode.setRelayList(setKey,setTag);
+//			relaySendNodes.add(number,tmpRelaySendNode);
+//		}
+//	}
+//	public Integer getRelayTag(int number,SecretKey setKey){
+//		RelaySendNode tmpRelayKey = relaySendNodes.get(number);
+//		return tmpRelayKey.getRelayTag(setKey);
+//	}
+//	public boolean checkRelayID(int number, SecretKey checkKey){
+//		try{
+//			RelaySendNode tmpRelayKey = relaySendNodes.get(number);
+//			for(SecretKey keyCheker : tmpRelayKey.relayKey){
+//				if(checkKey.equals(keyCheker))
+//					return true;
+//			}
+//			return false;
+//		} catch (Exception e){
+////			globalSb.append("checkRelayID error\n");
+//			return false;
+//		}
+//	}
 	
 	//変更ノード用
-	public class RelayChangeNode{
-		private MessagingAddress org; //往路用
-		private MessagingAddress dest; //復路用
-		
-		public void setRelayChangeNode(MessagingAddress org,MessagingAddress dest){
-			this.org = org;
-			this.dest = dest;
-		}
-		
-		public MessagingAddress getRelayOrgAddress(){
-			return this.org;
-		}
-		
-		public MessagingAddress getRelayDestAddress(){
-			return this.dest;
-		}
-	}
+//	public class RelayChangeNode{
+//		private MessagingAddress org; //往路用
+//		private MessagingAddress dest; //復路用
+//		
+//		public RelayChangeNode(MessagingAddress org,MessagingAddress dest){
+//			this.org = org;
+//			this.dest = dest;
+//		}
+//		public void setRelayChangeNode(MessagingAddress org,MessagingAddress dest){
+//			this.org = org;
+//			this.dest = dest;
+//		}
+//		
+//		public MessagingAddress getRelayOrgAddress(){
+//			return this.org;
+//		}
+//		
+//		public MessagingAddress getRelayDestAddress(){
+//			return this.dest;
+//		}
+//	}
+//	public void setRelayChangeNode(int number,MessagingAddress org,MessagingAddress dest){
+//		try{
+//			relayChangeNodes.get(number).setRelayChangeNode(org, dest);
+//		} catch(Exception e) {
+//			RelayChangeNode tmpRelayChangeNode = new RelayChangeNode();
+//			tmpRelayChangeNode.setRelayChangeNode(org, dest);
+//			relayChangeNodes.add(number,tmpRelayChangeNode);
+//		}
+//	}
+//	public MessagingAddress getRelayOrgAddress(int number){
+//		return relayChangeNodes.get(number).getRelayOrgAddress();
+//	}
+//	public MessagingAddress getRelayDestAddress(int number){
+//		return relayChangeNodes.get(number).getRelayDestAddress();
+//	}
+	private Map<Integer, Map<MessagingAddress,MessagingAddress>> relayNodeMap=Collections.synchronizedMap(new HashMap<Integer, Map<MessagingAddress,MessagingAddress>>());
 	public void setRelayChangeNode(int number,MessagingAddress org,MessagingAddress dest){
-		try{
-			relayChangeNodes.get(number).setRelayChangeNode(org, dest);
-		} catch(Exception e) {
-			RelayChangeNode tmpRelayChangeNode = new RelayChangeNode();
-			tmpRelayChangeNode.setRelayChangeNode(org, dest);
-			relayChangeNodes.add(number,tmpRelayChangeNode);
-		}
-	}
-	public MessagingAddress getRelayOrgAddress(int number){
-		return relayChangeNodes.get(number).getRelayOrgAddress();
-	}
-	public MessagingAddress getRelayDestAddress(int number){
-		return relayChangeNodes.get(number).getRelayDestAddress();
+		Map<MessagingAddress,MessagingAddress> tmpMap =Collections.synchronizedMap(new HashMap<MessagingAddress,MessagingAddress>());;
+		tmpMap.put(org, dest);
+		tmpMap.put(dest, org);
+		relayNodeMap.put(number, tmpMap);
 	}
 	public MessagingAddress getNextNodeAddress(int number,MessagingAddress tmp){
-		RelayChangeNode tmpRelayNode = relayChangeNodes.get(number);
-		if(tmp.equals(tmpRelayNode.getRelayOrgAddress())){
-			return tmpRelayNode.getRelayDestAddress();
-		}else{
-			return tmpRelayNode.getRelayOrgAddress();
-		}
+		Map<MessagingAddress,MessagingAddress> tmpMap = relayNodeMap.get(number);
+		//RelayChangeNode tmpRelayNode = relayChangeNodes.get(number);
+		return tmpMap.get(tmp);
 	}
 	
 	//print用変数の追加

@@ -275,9 +275,9 @@ public class OverlayWeaver_on_androidActivity extends Activity
 		ELEVEN("133.68.186.54","cs-d44"),
 		TWELVE("133.68.186.55","cs-d45"),
 		THIRTEEN("133.68.186.53","cs-d43"),
-		FOURTEEN("133.68.186.57","cs-d47"),
-		FIFTEEN("133.68.186.44","cs-d34"),
-		SIXTEEN("133.68.186.43","cs-d33"),
+		FOURTEEN("133.68.186.45","cs-d35"),
+		FIFTEEN("133.68.186.47","cs-d37"),
+		SIXTEEN("133.68.186.49","cs-d39"),
 		NOT_NODE("","");
 		
 		private final String ipAddr;
