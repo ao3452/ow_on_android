@@ -110,10 +110,10 @@ public class DHTMessageFactory {
 	 * @param hashValue
 	 * @return
 	 */
-	public static Message getCommunicateMessage(IDAddressPair src, byte[] body, Integer primeKey,int distinctionTag,long startTime,long toTime,int endTime){
+	public static Message getCommunicateMessage(IDAddressPair src, byte[] body, Integer primeKey,int distinctionTag,long startTime,long toTime,int endTime,long time,long makeMessageTime){
 	//public static Message getCommunicateMessage(IDAddressPair src, byte[] body, Integer primeKey,int distinctionTag,TimeCount[] time,int size){
 		int tag = Tag.RELAY.getNumber();
-		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_COMMUNICATION,distinctionTag,startTime,toTime,endTime);
+		return new Message(src, tag, (Serializable) null, body, primeKey, C.TYPE_COMMUNICATION,distinctionTag,startTime,toTime,endTime,time,makeMessageTime);
 	}
 	
 	/**

@@ -79,7 +79,7 @@ public class OverlayWeaver_on_androidActivity extends Activity
 
 	private DHT<MessageObject> dht = null;
 	private DHTConfiguration dhtConfig = null;
-	private final int CONSTRUCTNUMBER = 8;
+	private final int CONSTRUCTNUMBER = 7;
 	private final String LOGMSGTXT = new String("/data/local/log/logMakeMessage.txt");
 	private final String LOGCSTTXT = new String("/data/local/log/logConstruct.txt");
 	private final String LOGOTHTXT = new String("/data/local/log/logOtherTime.txt");
@@ -263,21 +263,24 @@ public class OverlayWeaver_on_androidActivity extends Activity
 		
 		TWO("133.68.186.58","cs-d48"),
 		//THREE("133.68.186.22","cs-d12"),
-		THREE("133.68.186.46","cs-d36"),
-		FOUR("133.68.186.61","cs-d51"),
-		FIVE("133.68.186.48","cs-d38"),
+		THREE("133.68.186.60","cs-d50"),
+		//FOUR("133.68.186.50","cs-d40"),
+		FOUR("133.68.186.44","cs-d34"),
+		FIVE("133.68.186.49","cs-d39"),
 		SIX("133.68.186.63","cs-d53"),
-		SEVEN("133.68.186.59","cs-d49"),
+		SEVEN("133.68.186.61","cs-d51"),
 		EIGHT("133.68.186.62","cs-d52"),
-		NINE("133.68.186.60","cs-d50"),
+		//NINE("133.68.186.66","cs-d56"),
+		NINE("133.68.186.64","cs-d54"),
 		TEN("133.68.186.56","cs-d46"),
 		//ELEVEN("133.68.186.15","cs-d05"),
 		ELEVEN("133.68.186.54","cs-d44"),
-		TWELVE("133.68.186.55","cs-d45"),
+		TWELVE("133.68.186.57","cs-d47"),
 		THIRTEEN("133.68.186.53","cs-d43"),
 		FOURTEEN("133.68.186.45","cs-d35"),
 		FIFTEEN("133.68.186.47","cs-d37"),
-		SIXTEEN("133.68.186.49","cs-d39"),
+		//SIXTEEN("133.68.186.64","cs-d54"),
+		SIXTEEN("133.68.186.65","cs-d55"),
 		NOT_NODE("","");
 		
 		private final String ipAddr;
@@ -605,7 +608,10 @@ public class OverlayWeaver_on_androidActivity extends Activity
 //					returnOtherLogSb.append(i+" : true return other time : "+ returnTime +"\n");
 //					logView.append("9");
 					init();
-					
+					if((i%10)==0){
+						dhtConfig.globalSb.setLength(0);
+						logView.setText("");
+					}
 					Thread.sleep(1000);
 				} catch (InterruptedException e) {
 					// TODO 自動生成された catch ブロック
@@ -665,7 +671,9 @@ public class OverlayWeaver_on_androidActivity extends Activity
 		public void onClick(View v) {
 			init();
 			for(int i=0;i<TIMESCOUNT;i++){
-				dht.communicate(communicateTargetID, "aaa",i);
+				dht.communicate(communicateTargetID, 
+						"abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcdefghijklmnopqrstuvwxyz1234abcd"
+						,i);
 				try {
 					for(int j=0;j<5;j++){
 						Thread.sleep(1000);

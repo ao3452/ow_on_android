@@ -83,28 +83,39 @@ public class AnonymousRouteInfo {
 			this.keysForAnonymity.add(0, skey);
 
 			/* 中継ノードの情報を保存 */
-			long seed = System.currentTimeMillis();
-			ID nextID = targetID;
+//			long seed = System.currentTimeMillis();
+//			ID nextID = targetID;
+			ID[] nextIDs = {
+					ID.getID("9000000000000000000000000000000000000000", 20),
+					ID.getID("e000000000000000000000000000000000000000", 20),
+//					ID.getID("0000000000000000000000000000000000000000", 20),
+					ID.getID("8000000000000000000000000000000000000000", 20),
+					ID.getID("c000000000000000000000000000000000000000", 20),
+					ID.getID("2000000000000000000000000000000000000000", 20),
+					ID.getID("a000000000000000000000000000000000000000", 20),
+					ID.getID("6000000000000000000000000000000000000000", 20),
+			};
 
 			for (int i = 0; i < relayCount; i++) {
 				skey = kg.generateKey();
 
-				// System.currentTimeMillisだとseedの値が変化しないのでこうした
-				seed += 10;
-				ID relayID = ID.getLatestLevelID(latestIDLevel, seed);
-
-				//ここでrelayIDが拒否しているIDでないかを確認する関数を挿入
-				if(config.checkRejectNode(relayID)){
-					i--;
-					continue;
-				}				
-				
-				// 同じノードが連続することを回避
-				if (relayID.equals(nextID)||relayID.equals(config.getMyID())||relayID.equals(targetID)) {
-					i--;
-					continue;
-				}
-				nextID = relayID;
+//				// System.currentTimeMillisだとseedの値が変化しないのでこうした
+//				seed += 10;
+//				ID relayID = ID.getLatestLevelID(latestIDLevel, seed);
+//
+//				//ここでrelayIDが拒否しているIDでないかを確認する関数を挿入
+//				if(config.checkRejectNode(relayID)){
+//					i--;
+//					continue;
+//				}				
+//				
+//				// 同じノードが連続することを回避
+//				if (relayID.equals(nextID)||relayID.equals(config.getMyID())||relayID.equals(targetID)) {
+//					i--;
+//					continue;
+//				}
+//				nextID = relayID;
+				ID relayID = nextIDs[i];
 
 				this.relayInfo.add(LocalRouteInfo.generateInfoAsRelay(relayID, skey));
 				this.keysForAnonymity.add(i, skey);

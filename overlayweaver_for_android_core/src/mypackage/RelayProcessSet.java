@@ -2,6 +2,7 @@ package mypackage;
 
 import javax.crypto.SecretKey;
 
+import ow.dht.impl.BasicDHTImpl.switchNumber;
 import ow.messaging.MessagingAddress;
 
 /**
@@ -37,13 +38,15 @@ public class RelayProcessSet {
 	private Integer primalKey;
 	private int decOrEnc;
 	private int number;
+	private switchNumber sNumber;
 	
-	public RelayProcessSet(MessagingAddress dest, SecretKey key, Integer sendHeader, int decOrEnc , int number){
+	public RelayProcessSet(MessagingAddress dest, SecretKey key, Integer sendHeader, int decOrEnc , int number , switchNumber sNumber){
 		this.dest = dest;
 		this.key = key;
 		this.primalKey = sendHeader;
 		this.decOrEnc = decOrEnc;
 		this.number = number;
+		this.sNumber = sNumber;
 	}
 	
 	public MessagingAddress getDestMessagingAddress(){
@@ -64,5 +67,12 @@ public class RelayProcessSet {
 	
 	public int getNumber(){
 		return this.number;
+	}
+	
+	public switchNumber getSwitchNumber(){
+		return this.sNumber;
+	}
+	public void setSwitchNumber(switchNumber sNumber){
+		this.sNumber = sNumber;
 	}
 }

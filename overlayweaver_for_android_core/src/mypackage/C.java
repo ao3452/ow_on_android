@@ -40,7 +40,9 @@ public class C
 	public static final int MESSAGE_START_TIME = 5; //時間計測用
 	public static final int MESSAGE_TO_TIME = 6;
 	public static final int MESSAGE_END_TIME = 7;
-	public static final int MESSAGE_SIZE = 8;
+	public static final int MESSAGE_MAKE_TIME = 8;
+	public static final int MESSAGE_MAKE_SEND = 9;
+	public static final int MESSAGE_SIZE = 10;
 
 	/*
 	 * 匿名通信で用いられるメッセージの種類
@@ -118,8 +120,8 @@ public class C
 	public static final int PORT_PKG = 4101;
 	//public static final String ADDR_NIA = "localhost";
 	//public static final String ADDR_PKG = "localhost";
-	public static final String ADDR_NIA = "cs-d55.cs.nitech.ac.jp";
-	public static final String ADDR_PKG = "cs-d55.cs.nitech.ac.jp";
+	public static final String ADDR_NIA = "cs-d60.cs.nitech.ac.jp";
+	public static final String ADDR_PKG = "cs-d60.cs.nitech.ac.jp";
 
 	public static final int JOIN_NIA = 100;
 	public static final int LEAVE_REPORT_NIA = 200;

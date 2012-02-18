@@ -57,7 +57,6 @@ import ow.dht.ByteArray;
 import ow.dht.DHT;
 import ow.dht.DHTConfiguration;
 import ow.dht.DHTConfiguration.commFlag;
-import ow.dht.DHTConfiguration.switchNumber;
 
 
 import ow.dht.ValueInfo;
@@ -126,6 +125,14 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	private Map<Integer, AnonymousRouteInfo> senderProcessMap; //
 	private Map<ID, Integer> senderMap; // 送信先ID(String)と対応する
 
+	//private Map<Integer, switchNumber> switchFlag=Collections.synchronizedMap(new HashMap<Integer, switchNumber>());
+	//private Map<Integer, Map<MessagingAddress,MessagingAddress>> relayNodeMap=Collections.synchronizedMap(new HashMap<Integer, Map<MessagingAddress,MessagingAddress>>());
+	public enum switchNumber{
+		NOT_CHENGE_FLAG,
+		NOT_APPROVE_FLAG,
+		END_APPROVE_FLAG
+	}
+	
 	private Point myPrivateKey;
 	private Point MPK;
 
@@ -1482,7 +1489,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				config.setRejectID(rejectNode.getID());
 				this.senderMap.remove(targetID);
 				this.senderProcessMap.remove(arInfo.getPrimaryKey());
-				construct(targetID,2,(Integer)contents[C.MESSAGE_END_TIME]);
+				construct(targetID,7,(Integer)contents[C.MESSAGE_END_TIME]);
 				config.globalSb.append("匿名路再構築完了\n");
 				break;
 			case C.TYPE_COMMUNICATION_RELAY :
@@ -1556,7 +1563,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				
 			case Relay : // 中継のみ許可
 				//config.globalSb.append("relay\n");
-				switch(config.getSwitchFlag(constructNumber)){
+				switch(value.getSwitchNumber()){
 				case NOT_CHENGE_FLAG :
 					//config.globalSb.append("Not Chenge Flag \n1\n");
 					//config.setOldCommFlag(constructNumber);
@@ -1564,7 +1571,8 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 					//config.globalSb.append("2\n");
 					ordinaryCommunicateMessage(msg,flag,startTime);
 					//config.globalSb.append("3\n");
-					config.setSwitchFlag(constructNumber, switchNumber.NOT_APPROVE_FLAG);
+					value.setSwitchNumber(switchNumber.NOT_APPROVE_FLAG);
+					relayProcessMap.put(key, value);
 					//config.globalSb.append("4\n");
 					break;
 				case NOT_APPROVE_FLAG :
@@ -1576,18 +1584,16 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				case END_APPROVE_FLAG :
 					//config.globalSb.append("End Approve Flag \n1\n");
 					int distinctionTag = (Integer) contents[C.MESSAGE_DISTINCTION_TAG];
-					MessagingAddress org = getNeighberAddress(msg.getSource().getID());
-					MessagingAddress nextNode = config.getNextNodeAddress(distinctionTag, org);
-					//config.globalSb.append("2\n");
-					//TimeCount[] aTime= (TimeCount[]) contents[C.MESSAGE_TIMECOUNT];
-					//int size =(Integer)contents[C.MESSAGE_SIZE];
-					//aTime[size++]=new TimeCount(startTime,System.currentTimeMillis());
-					long toTime = (Long)contents[C.MESSAGE_TO_TIME];
+					//MessagingAddress org = getNeighberAddress(msg.getSource().getID());
+					//MessagingAddress nextNode = config.getNextNodeAddress(distinctionTag, org);
+					//MessagingAddress nextNode = relayNodeMap.get(distinctionTag).get(org);
+
+					MessagingAddress nextNode = value.getDestMessagingAddress();
+					long time = System.currentTimeMillis()-startTime;
+					long toTime = (Long)contents[C.MESSAGE_TO_TIME]+time;
 					Message newMessage = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), 
 							(byte[]) contents[C.MESSAGE_BODY], value.getPrimalKey(), distinctionTag,
-							(Long)contents[C.MESSAGE_START_TIME],toTime+System.currentTimeMillis()-startTime,(Integer)contents[C.MESSAGE_END_TIME]);
-					//config.globalSb.append("3\n");
-					//Message newMessage = new Message(this.getSelfIDAddressPair(),Tag.RELAY.getNumber(),contents);
+							(Long)contents[C.MESSAGE_START_TIME],toTime,(Integer)contents[C.MESSAGE_END_TIME],time,(Long)contents[C.MESSAGE_MAKE_SEND]);
 					//config.globalSb.append("org address :" + org.toString() + "\n");
 					//config.globalSb.append("just send to dest : " + nextNode.toString()+ "\n");
 					sender.send(nextNode, newMessage);
@@ -1634,11 +1640,13 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				break;
 				
 			case Reject : // 中継拒否
-				switch(config.getSwitchFlag(constructNumber)){
+				switch(value.getSwitchNumber()){
 				case NOT_CHENGE_FLAG :
 					communicateChange(msg,flag);
 					ordinaryCommunicateMessage(msg,flag,startTime);
-					config.setSwitchFlag(constructNumber, switchNumber.NOT_APPROVE_FLAG);
+					value.setSwitchNumber(switchNumber.NOT_APPROVE_FLAG);
+					relayProcessMap.put(key, value);
+					//switchFlag.put(constructNumber, switchNumber.NOT_APPROVE_FLAG);
 					break;
 				case NOT_APPROVE_FLAG :
 					//config.globalSb.append("了承通知受信前 \n");
@@ -1731,7 +1739,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			//config.arrayTime[config.sizeArray++]=new TimeCount(config.globalRelayTime,System.currentTimeMillis());
 			// メッセージ作成
 			Message msg = DHTMessageFactory.getCommunicateMessage(this.getSelfIDAddressPair(), byteMail, primalKey,distinctionTag,
-					config.globalRelayTime,System.currentTimeMillis()-config.globalRelayTime,j);
+					config.globalRelayTime,System.currentTimeMillis()-config.globalRelayTime,j,0,config.globalRelayMakeMessageResultTime);
 			sender.send(dest, msg);
 
 			//config.globalSb.append("send mainkey : " + mainKey + "\n");
@@ -1856,7 +1864,12 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				
 				ID nextID = headerSet.getNextID();
 				MessagingAddress dest = getNeighberAddress(nextID);
-				config.setRelayChangeNode(number, org1, dest);
+				
+//				Map<MessagingAddress,MessagingAddress> tmpMap =Collections.synchronizedMap(new HashMap<MessagingAddress,MessagingAddress>());;
+//				tmpMap.put(org1, dest);
+//				tmpMap.put(dest, org1);
+//				relayNodeMap.put(number, tmpMap);
+				
 				msg = DHTMessageFactory.getCommunicateRelayMessage(getSelfIDAddressPair(), body, primeKey);
 				break;
 			case Reject : 
@@ -1874,7 +1887,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			}
 			
 			//了承通知用のフラグを初期化
-			config.setApprovalChangeFlag(false, number);
+		//	config.setApprovalChangeFlag(false, number);
 			//送信
 			config.globalSb.append("send key hash : " + primeKey + "\n");
 			config.globalSb.append("just send to dest : " + org1.toString());
@@ -1922,7 +1935,12 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				body = CipherTools.encryptDataPadding(body, secKey);
 				
 				MessagingAddress dest = value.getDestMessagingAddress();
-				config.setRelayChangeNode(reply, org1, dest);
+				
+//				Map<MessagingAddress,MessagingAddress> tmpMap =Collections.synchronizedMap(new HashMap<MessagingAddress,MessagingAddress>());;
+//				tmpMap.put(org1, dest);
+//				tmpMap.put(dest, org1);
+//				relayNodeMap.put(reply, tmpMap);
+				
 				config.globalSb.append("org : "+org1.toString()+"\n"+"dest : "+dest+"\n");
 				msg = DHTMessageFactory.getCommunicateRelayMessage(getSelfIDAddressPair(), body, key);
 				break;
@@ -2009,9 +2027,13 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 					long trueConstructTime=endTime-(Long)contents[C.MESSAGE_START_TIME];
 					toTime+=endTime-startTime;
 					long trueCommunicationTime=trueConstructTime-toTime;
+					
+					long time=(Long)contents[C.MESSAGE_MAKE_TIME];
+					
 					writeFile(filePath1,Long.toString(trueConstructTime),encType);
 					writeFile(filePath2,Long.toString(trueCommunicationTime),encType);
 					writeFile(filePath3,Long.toString(toTime),encType);
+					writeFile(filePath4,Long.toString(time),encType);
 					
 					startTime = System.currentTimeMillis();
 					//config.globalSb.append("mail : " + mail.toString()+"\n");
@@ -2027,7 +2049,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 					
 					//aTime[size++]=new TimeCount(startTime,System.currentTimeMillis());
 					msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, key,distinctionTag,
-							startTime,System.currentTimeMillis()-startTime,(Integer)contents[C.MESSAGE_END_TIME]);
+							startTime,System.currentTimeMillis()-startTime,(Integer)contents[C.MESSAGE_END_TIME],0,0);
 					//config.globalSb.append("send key hash : " + key + "\n");
 					// 送信
 					//config.globalSb.append("\n"+"just send to sender : " + dest2.toString()+"\n");
@@ -2042,7 +2064,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				//config.globalSb.append("Communicate type : communicate \n");
 				//aTime[size++]=new TimeCount(startTime,endTime);
 				msg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, primalKey,distinctionTag,
-						(Long)contents[C.MESSAGE_START_TIME],toTime+endTime-startTime,(Integer)contents[C.MESSAGE_END_TIME]);
+						(Long)contents[C.MESSAGE_START_TIME],toTime,(Integer)contents[C.MESSAGE_END_TIME],endTime-startTime,(Long)contents[C.MESSAGE_MAKE_SEND]);
 				sender.send(dest, msg);
 				break;
 				
@@ -2066,7 +2088,12 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				try{
 					Object mail = MyUtility.bytes2Object(body);
 					config.globalSb.append("了承通知を受信しました\n");
-					config.setSwitchFlag(value.getNumber(), switchNumber.END_APPROVE_FLAG);
+					value.setSwitchNumber(switchNumber.END_APPROVE_FLAG);
+					relayProcessMap.put(key, value);
+					value=relayProcessMap.get(primalKey);
+					value.setSwitchNumber(switchNumber.END_APPROVE_FLAG);
+					relayProcessMap.put(primalKey, value);
+					//switchFlag.put(value.getNumber(), switchNumber.END_APPROVE_FLAG);
 					//config.setApprovalChangeFlag(true, value.getNumber());
 				}catch(Exception e){
 					msg = DHTMessageFactory.getApprovalMessage(getSelfIDAddressPair(), body, primalKey);
@@ -2075,7 +2102,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 
 				break;
 			}
-			config.globalSb.setLength(0);
+			//config.globalSb.setLength(0);
 			//config.globalSb.append("send key : " + primalKey +"\n");
 			//config.globalSb.append("\n"+"just send to dest : " + dest.toString()+"\n");
 			//config.globalSb.append("\nordinary commincate message end\n");
@@ -2130,11 +2157,11 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				// 送信者側への処理のための情報を保存
 				IDAddressPair src = recvMsg.getSource();
 				MessagingAddress org = getNeighberAddress(src.getID());
-				RelayProcessSet toSenderSide = new RelayProcessSet(org, secKey, recvPrimalKey, C.ENCRYPT , config.getConstructNumber());
+				RelayProcessSet toSenderSide = new RelayProcessSet(org, secKey, recvPrimalKey, C.ENCRYPT , config.getConstructNumber(),switchNumber.NOT_CHENGE_FLAG);
 				relayProcessMap.put(sendPrimalKey, toSenderSide);
 
 				// 復号するための情報を保存
-				RelayProcessSet toReceiverSide = new RelayProcessSet(null, secKey, sendPrimalKey, C.DECRYPT , config.getConstructNumber());
+				RelayProcessSet toReceiverSide = new RelayProcessSet(null, secKey, sendPrimalKey, C.DECRYPT , config.getConstructNumber(),switchNumber.NOT_CHENGE_FLAG);
 				relayProcessMap.put(recvPrimalKey, toReceiverSide);
 				//aTime[size++]=new TimeCount(startTime,System.currentTimeMillis());
 				long endTime = System.currentTimeMillis();
@@ -2155,11 +2182,12 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 				body = CipherTools.encryptDataPadding(body, secKey);
 				//aTime[size++]=new TimeCount(startTime,System.currentTimeMillis());
 				recvMsg = DHTMessageFactory.getCommunicateMessage(getSelfIDAddressPair(), body, recvPrimalKey,-1,
-						startTime,System.currentTimeMillis()-startTime,i);
+						startTime,System.currentTimeMillis()-startTime,i,0,0);
 				//config.globalSb.append("send key hash : " + recvPrimalKey + "\n");
 				// 送信
 				//config.globalSb.append("\n"+"just send to sender : " + org.toString()+"\n");
 				sender.send(org, recvMsg);
+				//switchFlag.put(config.getConstructNumber(),switchNumber.NOT_CHENGE_FLAG );
 				return;
 			}
 			//aTime[size++]=new TimeCount(startTime,System.currentTimeMillis());
@@ -2175,15 +2203,16 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 			MessagingAddress org = getNeighberAddress(src.getID());
 
 			// 送信者側への処理のための情報を保存
-			RelayProcessSet toSenderSide = new RelayProcessSet(org, secKey, recvPrimalKey, C.ENCRYPT , config.getConstructNumber());
+			RelayProcessSet toSenderSide = new RelayProcessSet(org, secKey, recvPrimalKey, C.ENCRYPT , config.getConstructNumber(),switchNumber.NOT_CHENGE_FLAG);
 			relayProcessMap.put(sendPrimalKey, toSenderSide);
 			//config.globalSb.append("nextHeader : " + nextHeader+"\n");
 			//config.globalSb.append("decHeader : " + decHeader);
 			
 			// 受信者側への処理のための情報を保存
-			RelayProcessSet toReceiverSide = new RelayProcessSet(dest, secKey, sendPrimalKey, C.DECRYPT , config.getConstructNumber());
+			RelayProcessSet toReceiverSide = new RelayProcessSet(dest, secKey, sendPrimalKey, C.DECRYPT , config.getConstructNumber(),switchNumber.NOT_CHENGE_FLAG);
 			relayProcessMap.put(recvPrimalKey, toReceiverSide);
 			config.globalSb.setLength(0);
+			//switchFlag.put(config.getConstructNumber(),switchNumber.NOT_CHENGE_FLAG );
 		}
 		catch (ClassNotFoundException e){
 			config.globalSb.append("ClassNotFoundException\n"+e.toString()+"\n");
@@ -2202,6 +2231,7 @@ public class BasicDHTImpl<V extends Serializable> implements DHT<V> {
 	private final String filePath1="/data/local/log/resultConstruct.txt";
 	private final String filePath2="/data/local/log/resultCommunication.txt";
 	private final String filePath3="/data/local/log/resultToTime.txt";
+	private final String filePath4="/data/local/log/resultMakeMessageTime.txt";
 	private final String encType = "UTF-8"; 
 	/**
 	   * ファイル書き込み処理（String文字列⇒ファイル）

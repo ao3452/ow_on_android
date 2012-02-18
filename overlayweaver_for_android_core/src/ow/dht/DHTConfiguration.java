@@ -413,45 +413,41 @@ public class DHTConfiguration {
 //		}
 //	}
 	
-	private Map<Integer, switchNumber> switchFlag=Collections.synchronizedMap(new HashMap<Integer, switchNumber>());;
-	public switchNumber getSwitchFlag(int number){
-		if(switchFlag.containsKey(number)){
-			switchNumber result=switchFlag.get(number);
-			return result;
-		}
-		else
-			return switchNumber.NOT_CHENGE_FLAG;
-	}
 	
-	public void setSwitchFlag(int number,switchNumber result){
-		switchFlag.put(number, result);
-	}
+//	public switchNumber getSwitchFlag(int number){
+////		if(switchFlag.containsKey(number)){
+//			switchNumber result=switchFlag.get(number);
+//			return result;
+////		}
+////		else
+////			return switchNumber.NOT_CHENGE_FLAG;
+//	}
+//	
+//	public void setSwitchFlag(int number,switchNumber result){
+//		switchFlag.put(number, result);
+//	}
 	
-	public enum switchNumber{
-		NOT_CHENGE_FLAG,
-		NOT_APPROVE_FLAG,
-		END_APPROVE_FLAG
-	}
+
 	
 	//了承通知用のフラグ管理
-	private ArrayList<Boolean> approvalChangeFlag = new ArrayList<Boolean>(10);
-	//private boolean approvalChangeFlag[] = new boolean[REJECT_NODE_NUMBER];
-	public boolean getApprovalChangeFlag(int number){
-		try{
-			return approvalChangeFlag.get(number);
-		} catch (Exception e){
-			return false;
-		}
-	}
-	public void setApprovalChangeFlag(boolean newFlag,int number){
-		//boolean old = approvalChangeFlag.get(number);
-		try{
-			approvalChangeFlag.set(number, newFlag);
-		} catch(Exception e){
-			approvalChangeFlag.add(number,newFlag);
-		}
-		//return old;
-	}
+//	private ArrayList<Boolean> approvalChangeFlag = new ArrayList<Boolean>(10);
+//	//private boolean approvalChangeFlag[] = new boolean[REJECT_NODE_NUMBER];
+//	public boolean getApprovalChangeFlag(int number){
+//		try{
+//			return approvalChangeFlag.get(number);
+//		} catch (Exception e){
+//			return false;
+//		}
+//	}
+//	public void setApprovalChangeFlag(boolean newFlag,int number){
+//		//boolean old = approvalChangeFlag.get(number);
+//		try{
+//			approvalChangeFlag.set(number, newFlag);
+//		} catch(Exception e){
+//			approvalChangeFlag.add(number,newFlag);
+//		}
+//		//return old;
+//	}
 	
 	//構築中の匿名路の数を記憶する変数
 	private int constructNumber = 0;
@@ -574,18 +570,18 @@ public class DHTConfiguration {
 //	public MessagingAddress getRelayDestAddress(int number){
 //		return relayChangeNodes.get(number).getRelayDestAddress();
 //	}
-	private Map<Integer, Map<MessagingAddress,MessagingAddress>> relayNodeMap=Collections.synchronizedMap(new HashMap<Integer, Map<MessagingAddress,MessagingAddress>>());
-	public void setRelayChangeNode(int number,MessagingAddress org,MessagingAddress dest){
-		Map<MessagingAddress,MessagingAddress> tmpMap =Collections.synchronizedMap(new HashMap<MessagingAddress,MessagingAddress>());;
-		tmpMap.put(org, dest);
-		tmpMap.put(dest, org);
-		relayNodeMap.put(number, tmpMap);
-	}
-	public MessagingAddress getNextNodeAddress(int number,MessagingAddress tmp){
-		Map<MessagingAddress,MessagingAddress> tmpMap = relayNodeMap.get(number);
-		//RelayChangeNode tmpRelayNode = relayChangeNodes.get(number);
-		return tmpMap.get(tmp);
-	}
+//	private Map<Integer, Map<MessagingAddress,MessagingAddress>> relayNodeMap=Collections.synchronizedMap(new HashMap<Integer, Map<MessagingAddress,MessagingAddress>>());
+//	public void setRelayChangeNode(int number,MessagingAddress org,MessagingAddress dest){
+//		Map<MessagingAddress,MessagingAddress> tmpMap =Collections.synchronizedMap(new HashMap<MessagingAddress,MessagingAddress>());;
+//		tmpMap.put(org, dest);
+//		tmpMap.put(dest, org);
+//		relayNodeMap.put(number, tmpMap);
+//	}
+//	public MessagingAddress getNextNodeAddress(int number,MessagingAddress tmp){
+//		Map<MessagingAddress,MessagingAddress> tmpMap = relayNodeMap.get(number);
+//		//RelayChangeNode tmpRelayNode = relayChangeNodes.get(number);
+//		return tmpMap.get(tmp);
+//	}
 	
 	//print用変数の追加
 	public StringBuilder globalSb = new StringBuilder();
